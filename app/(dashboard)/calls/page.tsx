@@ -3,7 +3,6 @@ import {
   getCallsCount,
   getCallsWithFilters,
 } from "@/lib/db";
-import type { Department } from "@/lib/types";
 import { parseCallsSearchParams, parsePagination } from "@/lib/calls-search";
 import { CallsFiltersBar } from "@/components/calls/CallsFiltersBar";
 import { CallsTable } from "@/components/calls/CallsTable";
@@ -27,7 +26,9 @@ export default async function CallsPage({ searchParams }: PageProps) {
     supabase.from("departments").select("*").order("name"),
   ]);
 
-  const departments = (deptResp.data ?? []) as Department[];
+  const departments = (deptResp.data ?? []) as Awaited<
+    ReturnType<typeof import("@/lib/db").getDepartments>
+  >;
 
   const hasActiveFilters =
     !!filters.search ||

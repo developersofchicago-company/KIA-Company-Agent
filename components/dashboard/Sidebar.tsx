@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2,
-  Bot,
   LayoutDashboard,
   LogOut,
   Phone,
@@ -31,7 +30,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Calls", href: "/calls", icon: Phone },
   { label: "Dialer", href: "/dialer", icon: PhoneCall },
   { label: "Departments", href: "/departments", icon: Building2 },
-  { label: "Assistant", href: "/assistant", icon: Bot },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

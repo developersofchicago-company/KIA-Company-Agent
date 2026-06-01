@@ -1,6 +1,7 @@
 // File: app/api/vapi/dialer/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createOutboundCall } from "@/lib/vapi";
+import { normalizePhoneE164 } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,7 +34,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "phoneNumber is required" }, { status: 400 });
     }
 
-    const call = await createOutboundCall(phoneNumber, assistantId, {
+    // Normalize to E.164 (Vapi requirement). e.g. 03352427803 -> +923352427803
+    const e164 = normalizePhoneE164(phoneNumber);
+    if (!e164) {
+      return NextResponse.json(
+        { error: "Invalid phone number. Use format like 03352427803 or +923352427803." },
+        { status: 400 },
+      );
+    }
+
+    const call = await createOutboundCall(e164, assistantId, {
       phoneNumberId,
       customerName: callerName,
     });

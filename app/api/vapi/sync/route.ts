@@ -25,14 +25,14 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminSupabase();
 
-  // Fetch existing vapi_call_ids — include phone_number so we can re-sync "unknown" web calls
+  // Fetch existing rows — check phone_number and cost so we can re-sync incomplete rows
   const { data: existing } = await supabase
     .from("calls")
-    .select("vapi_call_id, phone_number")
+    .select("vapi_call_id, phone_number, cost")
     .in("vapi_call_id", vapiCalls.map((c) => c.id));
 
   const existingMap = new Map(
-    (existing ?? []).map((r) => [r.vapi_call_id, r.phone_number as string]),
+    (existing ?? []).map((r) => [r.vapi_call_id, r as { phone_number: string; cost: number | null }]),
   );
 
   let inserted = 0;
@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
   const errors: string[] = [];
 
   for (const vc of vapiCalls) {
-    const existingPhone = existingMap.get(vc.id);
-    // Skip if already synced with a real phone number
-    if (existingPhone && existingPhone !== "unknown") {
+    const existing = existingMap.get(vc.id);
+    // Skip only if fully synced: has a real phone number AND cost is already populated
+    if (existing && existing.phone_number !== "unknown" && existing.cost != null) {
       skipped++;
       continue;
     }

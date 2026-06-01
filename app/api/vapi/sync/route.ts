@@ -25,36 +25,40 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminSupabase();
 
-  // Fetch existing vapi_call_ids so we can skip them
+  // Fetch existing vapi_call_ids — include phone_number so we can re-sync "unknown" web calls
   const { data: existing } = await supabase
     .from("calls")
-    .select("vapi_call_id")
+    .select("vapi_call_id, phone_number")
     .in("vapi_call_id", vapiCalls.map((c) => c.id));
 
-  const existingIds = new Set((existing ?? []).map((r) => r.vapi_call_id));
+  const existingMap = new Map(
+    (existing ?? []).map((r) => [r.vapi_call_id, r.phone_number as string]),
+  );
 
   let inserted = 0;
   let skipped = 0;
   const errors: string[] = [];
 
   for (const vc of vapiCalls) {
-    if (existingIds.has(vc.id)) {
+    const existingPhone = existingMap.get(vc.id);
+    // Skip if already synced with a real phone number
+    if (existingPhone && existingPhone !== "unknown") {
       skipped++;
       continue;
     }
 
+    const isWebCall = vc.type === "webCall";
     const customerNumber =
-      vc.customer?.number ?? vc.phoneNumber?.number ?? "unknown";
+      vc.customer?.number ?? vc.phoneNumber?.number ?? (isWebCall ? "web-call" : "unknown");
 
-    const direction =
-      (vc as unknown as { type?: string }).type === "outboundPhoneCall"
-        ? "outbound"
-        : "inbound";
+    const direction: "inbound" | "outbound" =
+      vc.type === "outboundPhoneCall" ? "outbound" : "inbound";
 
     const status: "completed" | "missed" | "failed" | "in_progress" =
       vc.status === "ended" ? "completed"
       : vc.status === "in-progress" ? "in_progress"
-      : "completed";
+      : vc.endedAt ? "completed"
+      : "in_progress";
 
     const durationSeconds =
       vc.startedAt && vc.endedAt
@@ -78,7 +82,9 @@ export async function POST(request: NextRequest) {
       created_at: vc.createdAt ?? vc.startedAt ?? new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("calls").insert(row);
+    const { error } = await supabase
+      .from("calls")
+      .upsert(row, { onConflict: "vapi_call_id" });
     if (error) {
       errors.push(`${vc.id}: ${error.message}`);
     } else {

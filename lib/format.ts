@@ -7,6 +7,8 @@ import { formatDistanceToNowStrict } from "date-fns";
 export function formatPhone(raw: string | null | undefined): string {
   if (!raw) return "Unknown";
   const trimmed = raw.trim();
+  if (trimmed === "web-call") return "Web Call";
+  if (trimmed === "unknown") return "Unknown";
   if (trimmed.startsWith("+92")) {
     const digits = trimmed.replace(/\D/g, "").slice(2); // strip "92"
     if (digits.length >= 9) {
@@ -26,9 +28,12 @@ export function formatPhone(raw: string | null | undefined): string {
 /** 🇵🇰 for +92, 🌐 otherwise. Pure visual hint. */
 export function phoneFlag(raw: string | null | undefined): string {
   if (!raw) return "📞";
-  if (raw.trim().startsWith("+92")) return "🇵🇰";
-  if (raw.trim().startsWith("+1")) return "🇺🇸";
-  if (raw.trim().startsWith("+44")) return "🇬🇧";
+  const t = raw.trim();
+  if (t === "web-call") return "💻";
+  if (t === "unknown") return "📞";
+  if (t.startsWith("+92")) return "🇵🇰";
+  if (t.startsWith("+1")) return "🇺🇸";
+  if (t.startsWith("+44")) return "🇬🇧";
   return "🌐";
 }
 

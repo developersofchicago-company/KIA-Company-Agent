@@ -170,203 +170,167 @@ export function CalendarSettings({ departments }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Calendar Integration</CardTitle>
-              <CardDescription>
-                Connect your Cal.com account so the AI can check availability and book appointments
-              </CardDescription>
-            </div>
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Connect Cal.com
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Connect Cal.com</DialogTitle>
-                  <DialogDescription>
-                    Link your Cal.com account to enable AI-powered appointment scheduling.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Cal.com API Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="cal_live_..."
-                      value={calcomApiKey}
-                      onChange={(e) => setCalcomApiKey(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Get this from your{" "}
-                      <a
-                        href="https://app.cal.com/settings/developer/api-keys"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                      >
-                        Cal.com API settings
-                      </a>
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Department (Optional)</Label>
-                    <Select
-                      value={departmentId}
-                      onValueChange={setDepartmentId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="All departments" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">All departments</SelectItem>
-                        {departments.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Link to a specific agent or leave empty for all
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Default Duration (min)</Label>
-                      <Input
-                        type="number"
-                        value={duration}
-                        onChange={(e) => setDuration(Number(e.target.value))}
-                        min={15}
-                        step={15}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Buffer (min)</Label>
-                      <Input
-                        type="number"
-                        value={buffer}
-                        onChange={(e) => setBuffer(Number(e.target.value))}
-                        min={0}
-                        step={5}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Timezone</Label>
-                    <Select value={timezone} onValueChange={setTimezone}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                        <SelectItem value="America/Chicago">Central Time</SelectItem>
-                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+      <h3 className="text-lg font-medium text-dc-navy">Calendar Integrations</h3>
+      
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="flex flex-col">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-xl">
+                  📅
                 </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAdd} disabled={saving}>
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Connect
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {connections.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-center">
-              <Calendar className="mx-auto h-8 w-8 text-muted-foreground" />
-              <h3 className="mt-2 font-medium">No calendars connected</h3>
-              <p className="text-sm text-muted-foreground">
-                Connect your Cal.com account so the AI can schedule appointments with callers
-              </p>
+                <div>
+                  <CardTitle className="text-base">Cal.com</CardTitle>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {connections.map((conn) => (
-                <div
-                  key={conn.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
+            <CardDescription className="mt-3">
+              Enable AI scheduling using your Cal.com event types and availability.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="mt-auto flex flex-col gap-4">
+            {connections.length > 0 ? (
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  <p className="truncate font-medium text-dc-navy">
+                    {connections[0].provider_account_email || "Connected"}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1 text-xs">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                    Active connection
+                  </p>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  className="w-full justify-between hover:bg-destructive/10 hover:text-destructive group transition-colors"
+                  onClick={() => handleDelete(connections[0].id)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                      <span className="text-lg">📅</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">Cal.com</p>
-                        {conn.is_active ? (
-                          <Badge variant="secondary" className="text-xs">
-                            <Check className="mr-1 h-3 w-3" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">
-                            <X className="mr-1 h-3 w-3" />
-                            Inactive
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {conn.provider_account_email || "Connected"}
-                        {conn.department_id && (
-                          <span className="ml-2">
-                            •{" "}
-                            {departments.find((d) => d.id === conn.department_id)?.name ||
-                              "Unknown department"}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {conn.default_duration} min appointments •{" "}
-                        {conn.buffer_minutes} min buffer • {conn.timezone}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(conn.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  <span className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500 group-hover:hidden" />
+                    <Trash2 className="h-4 w-4 hidden group-hover:block" />
+                    <span className="group-hover:hidden">Connected</span>
+                    <span className="hidden group-hover:inline">Disconnect</span>
+                  </span>
+                </Button>
+              </div>
+            ) : (
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Connect Cal.com
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Connect Cal.com</DialogTitle>
+                    <DialogDescription>
+                      Link your Cal.com account to enable AI-powered appointment scheduling.
+                    </DialogDescription>
+                  </DialogHeader>
 
-          <div className="mt-6 rounded-lg border bg-muted/50 p-4">
-            <h4 className="font-medium">How it works</h4>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              <li>• AI asks callers for their preferred date and time</li>
-              <li>• Checks your Cal.com availability in real-time</li>
-              <li>• Books appointments automatically during the call</li>
-              <li>• Saves appointments to your Cal.com calendar</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Cal.com API Key</Label>
+                      <Input
+                        type="password"
+                        placeholder="cal_live_..."
+                        value={calcomApiKey}
+                        onChange={(e) => setCalcomApiKey(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Get this from your{" "}
+                        <a
+                          href="https://app.cal.com/settings/developer/api-keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          Cal.com API settings
+                        </a>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Department (Optional)</Label>
+                      <Select
+                        value={departmentId}
+                        onValueChange={setDepartmentId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All departments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">All departments</SelectItem>
+                          {departments.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Link to a specific agent or leave empty for all
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Default Duration (min)</Label>
+                        <Input
+                          type="number"
+                          value={duration}
+                          onChange={(e) => setDuration(Number(e.target.value))}
+                          min={15}
+                          step={15}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Buffer (min)</Label>
+                        <Input
+                          type="number"
+                          value={buffer}
+                          onChange={(e) => setBuffer(Number(e.target.value))}
+                          min={0}
+                          step={5}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Timezone</Label>
+                      <Select value={timezone} onValueChange={setTimezone}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                          <SelectItem value="America/Chicago">Central Time</SelectItem>
+                          <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                          <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAdd} disabled={saving}>
+                      {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Connect
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -118,31 +118,58 @@ export default function CalendarPage() {
   }, []);
 
   // Check if calendar is connected
-  useEffect(() => {
-    async function checkConnection() {
-      try {
-        const res = await fetch("/api/calendar/connections");
-        if (res.ok) {
-          const data = await res.json();
-          const connected = data.connections?.length > 0;
-          setHasConnection(connected);
-          if (connected) {
-            fetchProfile();
-            fetchSlots();
-          } else {
-            setLoading(false);
+  const checkConnection = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/calendar/connections", {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const connected = data.connections?.length > 0;
+        setHasConnection(connected);
+        if (connected) {
+          // Fetch profile and slots separately so errors don't reset hasConnection
+          try {
+            await fetchProfile();
+          } catch (profileErr) {
+            console.error("[calendar] profile fetch failed:", profileErr);
+            toast.error("Failed to load Cal.com profile");
           }
-        } else {
-          setHasConnection(false);
-          setLoading(false);
+          try {
+            await fetchSlots();
+          } catch (slotsErr) {
+            console.error("[calendar] slots fetch failed:", slotsErr);
+            toast.error("Failed to load available slots");
+          }
         }
-      } catch {
+      } else {
+        const err = await res.json();
+        console.error("[calendar] connection check failed:", err);
         setHasConnection(false);
-        setLoading(false);
+      }
+    } catch (err) {
+      console.error("[calendar] connection check error:", err);
+      setHasConnection(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProfile, fetchSlots]);
+
+  useEffect(() => {
+    checkConnection();
+  }, [checkConnection]);
+
+  // Refresh when page becomes visible (user comes back from settings)
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        checkConnection();
       }
     }
-    checkConnection();
-  }, [fetchProfile, fetchSlots]);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [checkConnection]);
 
   const totalSlots = Object.values(slots).reduce(
     (sum, daySlots) => sum + daySlots.length,
@@ -183,6 +210,10 @@ export default function CalendarPage() {
                   Connect Calendar
                 </Button>
               </Link>
+              <Button variant="outline" onClick={checkConnection}>
+                <Loader2 className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
             </div>
           </CardContent>
         </Card>

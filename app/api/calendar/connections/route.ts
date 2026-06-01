@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
  * GET /api/calendar/connections
  * List all calendar connections for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      provider,
       department_id,
       calcom_api_key,
       default_duration = 30,

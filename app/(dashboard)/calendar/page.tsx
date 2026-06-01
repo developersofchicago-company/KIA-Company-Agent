@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { createBrowserSupabase } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,6 +79,7 @@ export default function CalendarPage() {
   const [slots, setSlots] = useState<Record<string, CalSlot[]>>({});
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const supabase = createBrowserSupabase();
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -121,32 +123,46 @@ export default function CalendarPage() {
   const checkConnection = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/calendar/connections", {
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const connected = data.connections?.length > 0;
-        setHasConnection(connected);
-        if (connected) {
-          // Fetch profile and slots separately so errors don't reset hasConnection
-          try {
-            await fetchProfile();
-          } catch (profileErr) {
-            console.error("[calendar] profile fetch failed:", profileErr);
-            toast.error("Failed to load Cal.com profile");
-          }
-          try {
-            await fetchSlots();
-          } catch (slotsErr) {
-            console.error("[calendar] slots fetch failed:", slotsErr);
-            toast.error("Failed to load available slots");
-          }
-        }
-      } else {
-        const err = await res.json();
-        console.error("[calendar] connection check failed:", err);
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
+      if (userErr || !user) {
         setHasConnection(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("calendar_connections")
+        .select("id")
+        .eq("connected_by", user.id)
+        .eq("provider", "calcom")
+        .eq("is_active", true)
+        .limit(1);
+
+      if (error) {
+        console.error("[calendar] connection check failed:", error);
+        setHasConnection(false);
+        return;
+      }
+
+      const connected = (data ?? []).length > 0;
+      setHasConnection(connected);
+
+      if (connected) {
+        // Fetch profile and slots separately so errors don't reset hasConnection
+        try {
+          await fetchProfile();
+        } catch (profileErr) {
+          console.error("[calendar] profile fetch failed:", profileErr);
+          toast.error("Failed to load Cal.com profile");
+        }
+        try {
+          await fetchSlots();
+        } catch (slotsErr) {
+          console.error("[calendar] slots fetch failed:", slotsErr);
+          toast.error("Failed to load available slots");
+        }
       }
     } catch (err) {
       console.error("[calendar] connection check error:", err);
@@ -154,7 +170,7 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchProfile, fetchSlots]);
+  }, [fetchProfile, fetchSlots, supabase]);
 
   useEffect(() => {
     checkConnection();

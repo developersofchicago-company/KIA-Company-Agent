@@ -74,6 +74,15 @@ export function CalendarSettings({ departments }: Props) {
     setSaving(true);
 
     try {
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
+      if (userErr || !user) {
+        toast.error("You must be logged in to connect Cal.com");
+        return;
+      }
+
       if (!calcomApiKey.trim()) {
         toast.error("Cal.com API key is required");
         return;
@@ -95,6 +104,7 @@ export function CalendarSettings({ departments }: Props) {
         .from("calendar_connections")
         .insert({
           provider: "calcom",
+          connected_by: user.id,
           department_id: departmentId === "__all__" ? null : departmentId,
           calcom_api_key: calcomApiKey,
           provider_account_email: profile.data?.email || null,

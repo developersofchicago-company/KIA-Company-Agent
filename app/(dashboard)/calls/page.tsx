@@ -8,6 +8,7 @@ import { CallsFiltersBar } from "@/components/calls/CallsFiltersBar";
 import { CallsTable } from "@/components/calls/CallsTable";
 import { CallsPagination } from "@/components/calls/CallsPagination";
 import { CallsEmptyState } from "@/components/calls/CallsEmptyState";
+import { SyncCallsButton } from "@/components/calls/SyncCallsButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +41,16 @@ export default async function CallsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-dc-navy">Calls</h1>
-        <p className="text-sm text-muted-foreground">
-          {total === 0
-            ? "No calls in this view."
-            : `${total.toLocaleString()} total call${total === 1 ? "" : "s"}`}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-dc-navy">Calls</h1>
+          <p className="text-sm text-muted-foreground">
+            {total === 0
+              ? "No calls in this view."
+              : `${total.toLocaleString()} total call${total === 1 ? "" : "s"}`}
+          </p>
+        </div>
+        <SyncCallsButton />
       </div>
 
       <CallsFiltersBar departments={departments} />

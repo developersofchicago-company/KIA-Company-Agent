@@ -8,7 +8,6 @@ import {
   updateCallFromWebhook,
   upsertContact,
 } from "@/lib/db";
-import { getAvailableSlots, createBooking } from "@/lib/cal";
 import type {
   VapiCall,
   VapiCallType,
@@ -165,13 +164,12 @@ async function handleTranscript(msg: VapiTranscriptMessage) {
 
 async function handleFunctionCall(
   msg: VapiFunctionCallMessage | VapiToolCallsMessage,
-): Promise<Record<string, unknown> | null> {
+) {
   const call = msg.call;
-  if (!call?.id) return null;
+  if (!call?.id) return;
 
   let name: string | undefined;
   let args: Record<string, unknown> = {};
-  let toolCallId: string | undefined;
 
   if (msg.type === "function-call") {
     name = msg.functionCall?.name;
@@ -180,90 +178,12 @@ async function handleFunctionCall(
     const tc = msg.toolCalls?.[0];
     name = tc?.function?.name;
     args = asArgs(tc?.function?.arguments);
-    toolCallId = tc?.id;
   }
 
   LOG("function-call", { vapi_call_id: call.id, name, args });
-  if (!name) return null;
+  if (!name) return;
 
-  // ── Cal.com: Check availability ─────────────────────────────────────────
-  if (name === "check_availability" || name === "checkAvailability") {
-    try {
-      const days = Number(args.days) || 3;
-      const now = new Date();
-      const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-      const slots = await getAvailableSlots(now.toISOString(), end.toISOString());
-
-      const available: string[] = [];
-      for (const [, daySlots] of Object.entries(slots)) {
-        for (const slot of daySlots) {
-          const d = new Date(slot.time);
-          available.push(
-            `${d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Chicago" })} at ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })}`,
-          );
-        }
-      }
-
-      const result = {
-        available_slots: available.slice(0, 10),
-        total_slots: available.length,
-        message: available.length > 0
-          ? `I have ${available.length} available slots in the next ${days} days.`
-          : `No available slots in the next ${days} days.`,
-      };
-      LOG("check_availability result", { total: available.length });
-      return toolCallId
-        ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
-        : { result };
-    } catch (err) {
-      LOG("check_availability error", err);
-      const result = { error: "Could not fetch availability. Please try again." };
-      return toolCallId
-        ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
-        : { result };
-    }
-  }
-
-  // ── Cal.com: Book appointment ───────────────────────────────────────────
-  if (name === "book_appointment" || name === "bookAppointment") {
-    try {
-      const startTime = args.start_time as string | undefined;
-      const attendeeName = (args.name as string | undefined) ?? "Caller";
-      const attendeeEmail = (args.email as string | undefined) ?? "caller@unknown.com";
-      const timeZone = (args.timezone as string | undefined) ?? "America/Chicago";
-
-      if (!startTime) {
-        const result = { error: "I need a specific time to book the appointment." };
-        return toolCallId
-          ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
-          : { result };
-      }
-
-      const booking = await createBooking(startTime, { name: attendeeName, email: attendeeEmail, timeZone });
-
-      const result = {
-        success: true,
-        booking_id: booking.uid,
-        title: booking.title,
-        start_time: booking.startTime,
-        end_time: booking.endTime,
-        meeting_url: booking.meetingUrl ?? null,
-        message: `Appointment booked successfully for ${new Date(booking.startTime).toLocaleString("en-US", { timeZone: "America/Chicago", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
-      };
-      LOG("book_appointment success", { uid: booking.uid });
-      return toolCallId
-        ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
-        : { result };
-    } catch (err) {
-      LOG("book_appointment error", err);
-      const result = { error: `Booking failed: ${(err as Error).message}. Please try a different time.` };
-      return toolCallId
-        ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
-        : { result };
-    }
-  }
-
-  // ── Routing decisions ───────────────────────────────────────────────────
+  // Routing decisions
   const routingNames = new Set([
     "route_to_department",
     "routeToDepartment",
@@ -286,7 +206,7 @@ async function handleFunctionCall(
     }
   }
 
-  // ── Language selection ──────────────────────────────────────────────────
+  // Language selection
   if (name === "select_language" || name === "selectLanguage") {
     const lang = (args.language as string | undefined)?.toLowerCase();
     if (lang === "urdu" || lang === "english") {
@@ -297,8 +217,6 @@ async function handleFunctionCall(
       });
     }
   }
-
-  return null;
 }
 
 async function handleEndOfCallReport(msg: VapiEndOfCallReportMessage) {
@@ -379,32 +297,27 @@ function extractConfidence(msg: VapiEndOfCallReportMessage): number | null {
 // Route handler
 // ---------------------------------------------------------------------------
 
-async function dispatch(
-  message: VapiMessage,
-): Promise<Record<string, unknown> | null> {
+async function dispatch(message: VapiMessage): Promise<void> {
   switch (message.type) {
     case "status-update":
-      await handleStatusUpdate(message as VapiStatusUpdateMessage);
-      return null;
+      return handleStatusUpdate(message as VapiStatusUpdateMessage);
     case "transcript":
-      await handleTranscript(message as VapiTranscriptMessage);
-      return null;
+      return handleTranscript(message as VapiTranscriptMessage);
     case "function-call":
       return handleFunctionCall(message as VapiFunctionCallMessage);
     case "tool-calls":
       return handleFunctionCall(message as VapiToolCallsMessage);
     case "end-of-call-report":
-      await handleEndOfCallReport(message as VapiEndOfCallReportMessage);
-      return null;
+      return handleEndOfCallReport(message as VapiEndOfCallReportMessage);
     case "hang":
     case "speech-update":
     case "conversation-update":
     case "user-interrupted":
       LOG("ignored event:", message.type);
-      return null;
+      return;
     default:
       LOG("unhandled event type:", message.type);
-      return null;
+      return;
   }
 }
 
@@ -431,12 +344,7 @@ export async function POST(request: NextRequest) {
   LOG("received", message.type, "call=", message.call?.id);
 
   try {
-    const result = await dispatch(message);
-    // If dispatch returned data (e.g. Cal.com tool call results), send it back to Vapi
-    if (result) {
-      LOG("returning function result to Vapi", Object.keys(result));
-      return NextResponse.json(result, { status: 200 });
-    }
+    await dispatch(message);
   } catch (err) {
     // Log but still return 200 so Vapi doesn't retry storm us on a transient DB error
     console.error("[vapi-webhook] handler failed", message.type, err);

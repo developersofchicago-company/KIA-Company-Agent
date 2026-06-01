@@ -10,11 +10,25 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { Department } from "@/lib/types";
+import type { VapiPhoneNumber } from "@/lib/vapi";
+import type { VapiAssistant } from "@/lib/types";
+
+interface VapiResources {
+  assistants: VapiAssistant[];
+  phoneNumbers: VapiPhoneNumber[];
+}
 
 interface DepartmentDialogProps {
   open: boolean;
@@ -38,7 +52,19 @@ const EMPTY_FORM = {
 export function DepartmentDialog({ open, department, onClose, onSaved }: DepartmentDialogProps) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [resources, setResources] = useState<VapiResources>({ assistants: [], phoneNumbers: [] });
+  const [loadingResources, setLoadingResources] = useState(false);
   const isEditing = !!department;
+
+  useEffect(() => {
+    if (!open) return;
+    setLoadingResources(true);
+    fetch("/api/vapi/resources")
+      .then((r) => r.json())
+      .then((d) => setResources(d))
+      .catch(() => toast.error("Could not load Vapi assistants/numbers"))
+      .finally(() => setLoadingResources(false));
+  }, [open]);
 
   useEffect(() => {
     if (department) {
@@ -113,14 +139,46 @@ export function DepartmentDialog({ open, department, onClose, onSaved }: Departm
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="dept-assistant-id">Vapi Assistant ID</Label>
-            <Input id="dept-assistant-id" value={form.vapi_assistant_id} onChange={(e) => set("vapi_assistant_id", e.target.value)} placeholder="c2a51ca0-beba-4765-bdbd-ec178dabbe63" />
-            <p className="text-xs text-muted-foreground">From your Vapi dashboard — used for the Talk to AI button</p>
+            <Label>Vapi Assistant {loadingResources && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}</Label>
+            <Select
+              value={form.vapi_assistant_id || "__none__"}
+              onValueChange={(v) => set("vapi_assistant_id", v === "__none__" ? "" : v)}
+              disabled={loadingResources}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select assistant…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                {resources.assistants.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name ?? a.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Used for the Talk to AI button</p>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="dept-assistant-number">Vapi Assistant Phone Number</Label>
-            <Input id="dept-assistant-number" value={form.vapi_assistant_number} onChange={(e) => set("vapi_assistant_number", e.target.value)} placeholder="+12246781234" />
+            <Label>Vapi Phone Number {loadingResources && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}</Label>
+            <Select
+              value={form.vapi_assistant_number || "__none__"}
+              onValueChange={(v) => set("vapi_assistant_number", v === "__none__" ? "" : v)}
+              disabled={loadingResources}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select phone number…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                {resources.phoneNumbers.map((p) => (
+                  <SelectItem key={p.id} value={p.number}>
+                    {p.number}{p.name ? ` — ${p.name}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">Phone number linked to this assistant in Vapi</p>
           </div>
 

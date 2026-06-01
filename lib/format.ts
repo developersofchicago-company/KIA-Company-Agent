@@ -1,44 +1,6 @@
 import { formatDistanceToNowStrict } from "date-fns";
 
 /**
- * Normalize a raw phone number into E.164 format (e.g. +923352427803),
- * which Vapi requires. Handles common Pakistani input styles:
- *   03352427803    -> +923352427803
- *   3352427803     -> +923352427803
- *   923352427803   -> +923352427803
- *   +923352427803  -> +923352427803 (unchanged)
- * Numbers that already start with "+" are kept as-is (only spaces/dashes stripped).
- *
- * @param defaultCountryCode digits without "+" (default "92" for Pakistan)
- */
-export function normalizePhoneE164(
-  raw: string | null | undefined,
-  defaultCountryCode = "92",
-): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-
-  // Already E.164 — just strip spaces/dashes/parens.
-  if (trimmed.startsWith("+")) {
-    const cleaned = "+" + trimmed.slice(1).replace(/\D/g, "");
-    return cleaned.length >= 8 ? cleaned : null;
-  }
-
-  let digits = trimmed.replace(/\D/g, "");
-  if (!digits) return null;
-
-  // Leading 0 = local format -> drop it and prepend country code.
-  if (digits.startsWith("0")) {
-    digits = defaultCountryCode + digits.slice(1);
-  } else if (!digits.startsWith(defaultCountryCode)) {
-    // Bare local number without leading 0 -> assume default country.
-    digits = defaultCountryCode + digits;
-  }
-
-  return digits.length >= 8 ? `+${digits}` : null;
-}
-
-/**
  * "+92 21 1234 5678" style spacing for PK numbers, otherwise the raw value.
  * Returns the original string if it can't be parsed.
  */

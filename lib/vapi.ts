@@ -1,5 +1,14 @@
 import type { VapiAssistant, VapiCall } from "@/lib/types";
 
+export interface VapiPhoneNumber {
+  id: string;
+  number: string;
+  name?: string;
+  assistantId?: string;
+  provider?: string;
+  createdAt?: string;
+}
+
 const VAPI_BASE_URL = "https://api.vapi.ai";
 
 class VapiError extends Error {
@@ -112,6 +121,14 @@ export function getCall(vapiCallId: string): Promise<VapiCall> {
 export async function getCallRecording(vapiCallId: string): Promise<string | null> {
   const call = await getCall(vapiCallId);
   return call.recordingUrl ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Phone Numbers
+// ---------------------------------------------------------------------------
+
+export function getPhoneNumbers(): Promise<VapiPhoneNumber[]> {
+  return vapiFetch<VapiPhoneNumber[]>("/phone-number");
 }
 
 export { VapiError };

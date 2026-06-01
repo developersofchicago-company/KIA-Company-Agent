@@ -118,6 +118,10 @@ export function getCall(vapiCallId: string): Promise<VapiCall> {
   return vapiFetch<VapiCall>(`/call/${vapiCallId}`);
 }
 
+export function vapiFetchCalls(limit = 100): Promise<VapiCall[]> {
+  return vapiFetch<VapiCall[]>(`/call?limit=${limit}`);
+}
+
 export async function getCallRecording(vapiCallId: string): Promise<string | null> {
   const call = await getCall(vapiCallId);
   return call.recordingUrl ?? null;

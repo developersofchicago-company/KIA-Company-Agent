@@ -13,14 +13,15 @@ import {
   formatPhone,
   phoneFlag,
 } from "@/lib/format";
-import type { Call, Department } from "@/lib/types";
+import type { Call, Department, VapiCall } from "@/lib/types";
 
 interface Props {
   call: Call;
   department: Department | null;
+  vapiCall?: VapiCall | null;
 }
 
-export function CallInfoCard({ call, department }: Props) {
+export function CallInfoCard({ call, department, vapiCall }: Props) {
   const confidence =
     typeof call.ai_confidence === "number"
       ? Math.max(0, Math.min(1, call.ai_confidence))
@@ -95,6 +96,26 @@ export function CallInfoCard({ call, department }: Props) {
           )}
         </InfoRow>
 
+        {vapiCall?.cost != null && (
+          <InfoRow label="Cost">
+            <span className="font-mono text-xs">${vapiCall.cost.toFixed(4)}</span>
+          </InfoRow>
+        )}
+
+        {vapiCall?.endedReason && (
+          <InfoRow label="Ended reason">
+            <span className="capitalize text-muted-foreground">{vapiCall.endedReason.replace(/-/g, " ")}</span>
+          </InfoRow>
+        )}
+
+        {vapiCall?.successEvaluation && (
+          <InfoRow label="Success eval">
+            <Badge variant={vapiCall.successEvaluation.toLowerCase() === "true" ? "default" : "secondary"} className="text-xs">
+              {vapiCall.successEvaluation}
+            </Badge>
+          </InfoRow>
+        )}
+
         {(call.tags?.length ?? 0) > 0 && (
           <InfoRow label="Tags">
             <div className="flex flex-wrap gap-1">
@@ -109,6 +130,13 @@ export function CallInfoCard({ call, department }: Props) {
               ))}
             </div>
           </InfoRow>
+        )}
+
+        {vapiCall?.summary && (
+          <div className="pt-2 border-t space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">AI Summary</p>
+            <p className="text-sm text-foreground leading-relaxed">{vapiCall.summary}</p>
+          </div>
         )}
       </CardContent>
     </Card>

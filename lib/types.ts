@@ -120,6 +120,8 @@ export interface VapiCall {
   endedAt?: string;
   endedReason?: string;
   cost?: number;
+  costBreakdown?: Record<string, number>;
+  successEvaluation?: string;
   recordingUrl?: string;
   transcript?: string;
   summary?: string;

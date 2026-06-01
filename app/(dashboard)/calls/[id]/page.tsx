@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getCallerHistory } from "@/lib/db";
+import { getCall as getVapiCall } from "@/lib/vapi";
 import {
   formatFullTimestamp,
   formatPhone,
@@ -19,7 +20,7 @@ import { CallTranscriptView } from "@/components/calls/CallTranscriptView";
 import { CallInfoCard } from "@/components/calls/CallInfoCard";
 import { CallActions } from "@/components/calls/CallActions";
 import { CallerHistoryCard } from "@/components/calls/CallerHistoryCard";
-import type { Call, Department } from "@/lib/types";
+import type { Call, Department, VapiCall } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function CallDetailPage({ params }: PageProps) {
 
   const call = callRow as Call;
 
-  const [{ data: deptRow }, history] = await Promise.all([
+  const [{ data: deptRow }, history, vapiCall] = await Promise.all([
     call.department_id
       ? supabase
           .from("departments")
@@ -50,8 +51,15 @@ export default async function CallDetailPage({ params }: PageProps) {
           .maybeSingle()
       : Promise.resolve({ data: null }),
     getCallerHistory(supabase, call.phone_number, call.id, 8),
+    call.vapi_call_id
+      ? getVapiCall(call.vapi_call_id).catch(() => null)
+      : Promise.resolve(null),
   ]);
   const department = (deptRow as Department | null) ?? null;
+
+  // Merge: prefer Vapi data for recording URL and summary if not in Supabase
+  const recordingUrl = call.recording_url ?? vapiCall?.recordingUrl ?? null;
+  const transcript = call.transcript ?? vapiCall?.transcript ?? null;
 
   return (
     <div className="space-y-6">
@@ -92,17 +100,17 @@ export default async function CallDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">
           <CallAudioPlayer
-            src={call.recording_url}
+            src={recordingUrl}
             fallbackDurationSeconds={call.duration_seconds ?? null}
           />
           <CallTranscriptView
-            transcript={call.transcript}
+            transcript={transcript}
             status={call.status}
           />
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          <CallInfoCard call={call} department={department} />
+          <CallInfoCard call={call} department={department} vapiCall={vapiCall} />
           <CallActions call={call} />
           <CallerHistoryCard calls={history} />
         </div>

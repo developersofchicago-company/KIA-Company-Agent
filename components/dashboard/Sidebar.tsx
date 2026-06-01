@@ -27,7 +27,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Calls", href: "/calls", icon: Phone },
+  { label: "Call History", href: "/calls", icon: Phone },
   { label: "Dialer", href: "/dialer", icon: PhoneCall },
   { label: "Agents", href: "/departments", icon: Building2 },
   { label: "Settings", href: "/settings", icon: Settings },

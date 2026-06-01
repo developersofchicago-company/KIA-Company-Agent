@@ -2,6 +2,8 @@
 // Cal.com API v2 client — server-only
 // ---------------------------------------------------------------------------
 
+import { createAdminSupabase } from "@/lib/supabase-admin";
+
 const CAL_BASE = "https://api.cal.com/v2";
 
 // Cal.com requires a different API version header per endpoint.
@@ -12,9 +14,9 @@ const CAL_API_VERSION = {
   default: "2024-08-13",
 } as const;
 
-function getApiKey(): string {
-  const key = process.env.CAL_API_KEY;
-  if (!key) throw new Error("CAL_API_KEY is not set in the environment");
+function getApiKey(explicit?: string): string {
+  const key = explicit ?? process.env.CAL_API_KEY;
+  if (!key) throw new Error("Cal.com API key not provided (no DB connection or env var)");
   return key;
 }
 
@@ -28,11 +30,12 @@ async function calFetch<T>(
   path: string,
   init: RequestInit = {},
   apiVersion: string = CAL_API_VERSION.default,
+  apiKey?: string,
 ): Promise<T> {
   const res = await fetch(`${CAL_BASE}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getApiKey(apiKey)}`,
       "cal-api-version": apiVersion,
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
@@ -93,11 +96,12 @@ export interface CalBookingResponse {
 // ---------------------------------------------------------------------------
 
 /** Get all event types for the authenticated user */
-export async function getEventTypes(): Promise<CalEventType[]> {
+export async function getEventTypes(apiKey?: string): Promise<CalEventType[]> {
   const res = await calFetch<{ status: string; data: CalEventType[] }>(
     "/event-types",
     {},
     CAL_API_VERSION.eventTypes,
+    apiKey,
   );
   return res.data;
 }
@@ -112,6 +116,7 @@ export async function getAvailableSlots(
   startTime: string,
   endTime: string,
   eventTypeId?: number,
+  apiKey?: string,
 ): Promise<Record<string, CalSlot[]>> {
   const id = eventTypeId ?? getEventTypeId();
   const params = new URLSearchParams({
@@ -123,6 +128,7 @@ export async function getAvailableSlots(
     `/slots/available?${params}`,
     {},
     CAL_API_VERSION.slots,
+    apiKey,
   );
   return res.data.slots;
 }
@@ -142,6 +148,7 @@ export async function createBooking(
     language?: string;
   },
   eventTypeId?: number,
+  apiKey?: string,
 ): Promise<CalBooking> {
   const id = eventTypeId ?? getEventTypeId();
   const res = await calFetch<CalBookingResponse>(
@@ -160,12 +167,13 @@ export async function createBooking(
       }),
     },
     CAL_API_VERSION.bookings,
+    apiKey,
   );
   return res.data;
 }
 
 /** Get current user profile from Cal.com */
-export async function getCalProfile() {
+export async function getCalProfile(apiKey?: string) {
   const res = await calFetch<{
     status: string;
     data: {
@@ -176,6 +184,106 @@ export async function getCalProfile() {
       timeZone: string;
       avatarUrl: string;
     };
-  }>("/me");
+  }>("/me", {}, CAL_API_VERSION.default, apiKey);
   return res.data;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-tenant helpers — used by the Vapi webhook during live calls
+// ---------------------------------------------------------------------------
+
+export interface CalConnection {
+  id: string;
+  calcom_api_key: string;
+  timezone: string | null;
+  default_duration: number | null;
+  department_id: string | null;
+}
+
+/**
+ * Find the active Cal.com connection to use for a given call.
+ * Resolution order:
+ *   1. If the call's Vapi assistant maps to a department that has its own
+ *      calcom connection, use that.
+ *   2. Otherwise fall back to the first active calcom connection (single-tenant).
+ */
+export async function getActiveCalConnection(
+  vapiAssistantId?: string | null,
+): Promise<CalConnection | null> {
+  const admin = createAdminSupabase();
+
+  // 1. Try assistant -> department -> connection
+  if (vapiAssistantId) {
+    const { data: dept } = await admin
+      .from("departments")
+      .select("id")
+      .eq("vapi_assistant_id", vapiAssistantId)
+      .maybeSingle();
+
+    if (dept?.id) {
+      const { data: conn } = await admin
+        .from("calendar_connections")
+        .select("id, calcom_api_key, timezone, default_duration, department_id")
+        .eq("provider", "calcom")
+        .eq("is_active", true)
+        .eq("department_id", dept.id)
+        .not("calcom_api_key", "is", null)
+        .maybeSingle();
+      if (conn?.calcom_api_key) return conn as CalConnection;
+    }
+  }
+
+  // 2. Fallback: first active calcom connection
+  const { data } = await admin
+    .from("calendar_connections")
+    .select("id, calcom_api_key, timezone, default_duration, department_id")
+    .eq("provider", "calcom")
+    .eq("is_active", true)
+    .not("calcom_api_key", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as CalConnection) ?? null;
+}
+
+/** Resolve the first event type id for a Cal.com account. */
+export async function resolveFirstEventTypeId(
+  apiKey: string,
+): Promise<number | null> {
+  const types = await getEventTypes(apiKey);
+  return types[0]?.id ?? null;
+}
+
+interface SaveAppointmentInput {
+  calendar_connection_id: string;
+  call_id?: string | null;
+  contact_id?: string | null;
+  provider_event_id?: string | null;
+  provider_booking_url?: string | null;
+  title?: string | null;
+  description?: string | null;
+  start_time: string;
+  end_time?: string | null;
+  timezone?: string | null;
+  attendee_name?: string | null;
+  attendee_email?: string | null;
+  attendee_phone?: string | null;
+  status?: string;
+}
+
+/** Save a booked appointment to the appointments table (AI-created). */
+export async function saveAppointment(input: SaveAppointmentInput) {
+  const admin = createAdminSupabase();
+  const { data, error } = await admin
+    .from("appointments")
+    .insert({
+      ...input,
+      status: input.status ?? "booked",
+      created_by_ai: true,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data;
 }

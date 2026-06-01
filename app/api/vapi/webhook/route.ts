@@ -8,6 +8,13 @@ import {
   updateCallFromWebhook,
   upsertContact,
 } from "@/lib/db";
+import {
+  getActiveCalConnection,
+  resolveFirstEventTypeId,
+  getAvailableSlots,
+  createBooking,
+  saveAppointment,
+} from "@/lib/cal";
 import type {
   VapiCall,
   VapiCallType,
@@ -164,12 +171,13 @@ async function handleTranscript(msg: VapiTranscriptMessage) {
 
 async function handleFunctionCall(
   msg: VapiFunctionCallMessage | VapiToolCallsMessage,
-) {
+): Promise<Record<string, unknown> | null> {
   const call = msg.call;
-  if (!call?.id) return;
+  if (!call?.id) return null;
 
   let name: string | undefined;
   let args: Record<string, unknown> = {};
+  let toolCallId: string | undefined;
 
   if (msg.type === "function-call") {
     name = msg.functionCall?.name;
@@ -178,10 +186,126 @@ async function handleFunctionCall(
     const tc = msg.toolCalls?.[0];
     name = tc?.function?.name;
     args = asArgs(tc?.function?.arguments);
+    toolCallId = tc?.id;
   }
 
   LOG("function-call", { vapi_call_id: call.id, name, args });
-  if (!name) return;
+  if (!name) return null;
+
+  // Helper to shape a result for either function-call or tool-calls format.
+  const reply = (result: unknown): Record<string, unknown> =>
+    toolCallId
+      ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
+      : { result };
+
+  // ── Cal.com: Check availability ─────────────────────────────────────────
+  if (name === "check_availability" || name === "checkAvailability") {
+    try {
+      const conn = await getActiveCalConnection(call.assistantId);
+      if (!conn) return reply({ error: "No calendar is connected yet." });
+
+      const eventTypeId = await resolveFirstEventTypeId(conn.calcom_api_key);
+      if (!eventTypeId) return reply({ error: "No event type found on the calendar." });
+
+      const days = Number(args.days) || 3;
+      const now = new Date();
+      const end = new Date(now.getTime() + days * 86400000);
+      const tz = conn.timezone ?? "America/Chicago";
+      const slots = await getAvailableSlots(
+        now.toISOString(),
+        end.toISOString(),
+        eventTypeId,
+        conn.calcom_api_key,
+      );
+
+      const available: string[] = [];
+      for (const daySlots of Object.values(slots)) {
+        for (const slot of daySlots) {
+          const d = new Date(slot.time);
+          available.push(
+            `${d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: tz })} at ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz })}`,
+          );
+        }
+      }
+      LOG("check_availability", { total: available.length });
+      return reply({
+        available_slots: available.slice(0, 10),
+        total_slots: available.length,
+        message: available.length
+          ? `There are ${available.length} open slots in the next ${days} days.`
+          : `No open slots in the next ${days} days.`,
+      });
+    } catch (err) {
+      LOG("check_availability error", err);
+      return reply({ error: "Could not fetch availability right now." });
+    }
+  }
+
+  // ── Cal.com: Book appointment ───────────────────────────────────────────
+  if (name === "book_appointment" || name === "bookAppointment") {
+    try {
+      const conn = await getActiveCalConnection(call.assistantId);
+      if (!conn) return reply({ error: "No calendar is connected yet." });
+
+      const eventTypeId = await resolveFirstEventTypeId(conn.calcom_api_key);
+      if (!eventTypeId) return reply({ error: "No event type found on the calendar." });
+
+      const startTime = (args.start_time ?? args.startTime ?? args.time) as string | undefined;
+      const attendeeName = (args.name as string | undefined) ?? "Caller";
+      const attendeeEmail = (args.email as string | undefined) ?? "caller@unknown.com";
+      const attendeePhone = (args.phone as string | undefined) ?? deriveCustomerNumber(call) ?? null;
+      const tz = (args.timezone as string | undefined) ?? conn.timezone ?? "America/Chicago";
+
+      if (!startTime) return reply({ error: "I need a specific date and time to book." });
+
+      const booking = await createBooking(
+        startTime,
+        { name: attendeeName, email: attendeeEmail, timeZone: tz },
+        eventTypeId,
+        conn.calcom_api_key,
+      );
+
+      // Persist into our appointments table (linked to the call).
+      try {
+        const admin = createAdminSupabase();
+        const { data: callRow } = await admin
+          .from("calls")
+          .select("id")
+          .eq("vapi_call_id", call.id)
+          .maybeSingle();
+
+        await saveAppointment({
+          calendar_connection_id: conn.id,
+          call_id: (callRow?.id as string | undefined) ?? null,
+          provider_event_id: booking.uid,
+          provider_booking_url: booking.meetingUrl ?? null,
+          title: booking.title ?? `${args.service_type ?? "Appointment"}`,
+          description: (args.service_type as string | undefined) ?? null,
+          start_time: booking.startTime,
+          end_time: booking.endTime,
+          timezone: tz,
+          attendee_name: attendeeName,
+          attendee_email: attendeeEmail,
+          attendee_phone: attendeePhone,
+          status: "booked",
+        });
+      } catch (saveErr) {
+        LOG("appointment save failed (booking still created)", saveErr);
+      }
+
+      LOG("book_appointment success", { uid: booking.uid });
+      return reply({
+        success: true,
+        booking_id: booking.uid,
+        start_time: booking.startTime,
+        meeting_url: booking.meetingUrl ?? null,
+        message: `Appointment confirmed for ${new Date(booking.startTime).toLocaleString("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
+      });
+    } catch (err) {
+      LOG("book_appointment error", err);
+      return reply({ error: `Booking failed: ${(err as Error).message}. Please try another time.` });
+    }
+  }
 
   // Routing decisions
   const routingNames = new Set([
@@ -217,6 +341,8 @@ async function handleFunctionCall(
       });
     }
   }
+
+  return null;
 }
 
 async function handleEndOfCallReport(msg: VapiEndOfCallReportMessage) {
@@ -297,27 +423,32 @@ function extractConfidence(msg: VapiEndOfCallReportMessage): number | null {
 // Route handler
 // ---------------------------------------------------------------------------
 
-async function dispatch(message: VapiMessage): Promise<void> {
+async function dispatch(
+  message: VapiMessage,
+): Promise<Record<string, unknown> | null> {
   switch (message.type) {
     case "status-update":
-      return handleStatusUpdate(message as VapiStatusUpdateMessage);
+      await handleStatusUpdate(message as VapiStatusUpdateMessage);
+      return null;
     case "transcript":
-      return handleTranscript(message as VapiTranscriptMessage);
+      await handleTranscript(message as VapiTranscriptMessage);
+      return null;
     case "function-call":
       return handleFunctionCall(message as VapiFunctionCallMessage);
     case "tool-calls":
       return handleFunctionCall(message as VapiToolCallsMessage);
     case "end-of-call-report":
-      return handleEndOfCallReport(message as VapiEndOfCallReportMessage);
+      await handleEndOfCallReport(message as VapiEndOfCallReportMessage);
+      return null;
     case "hang":
     case "speech-update":
     case "conversation-update":
     case "user-interrupted":
       LOG("ignored event:", message.type);
-      return;
+      return null;
     default:
       LOG("unhandled event type:", message.type);
-      return;
+      return null;
   }
 }
 
@@ -344,7 +475,12 @@ export async function POST(request: NextRequest) {
   LOG("received", message.type, "call=", message.call?.id);
 
   try {
-    await dispatch(message);
+    const result = await dispatch(message);
+    // Cal.com tool calls return data the AI needs mid-call — send it back.
+    if (result) {
+      LOG("returning function result to Vapi", Object.keys(result));
+      return NextResponse.json(result, { status: 200 });
+    }
   } catch (err) {
     // Log but still return 200 so Vapi doesn't retry storm us on a transient DB error
     console.error("[vapi-webhook] handler failed", message.type, err);

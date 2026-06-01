@@ -80,7 +80,7 @@ export function CalendarSettings({ departments }: Props) {
       }
 
       // Validate the API key by fetching profile
-      const profileRes = await fetch("https://api.cal.com/v1/me", {
+      const profileRes = await fetch("https://api.cal.com/v2/me", {
         headers: { Authorization: `Bearer ${calcomApiKey}` },
       });
 

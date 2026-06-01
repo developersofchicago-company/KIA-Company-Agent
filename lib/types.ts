@@ -220,3 +220,44 @@ export type VapiMessage =
 export interface VapiWebhookEvent {
   message: VapiMessage;
 }
+
+// ============================================================================
+// Calendar Integration Types
+// ============================================================================
+
+export type CalendarProvider = "google" | "calcom" | "calendly";
+
+export interface CalendarConnection {
+  id: string;
+  provider: CalendarProvider;
+  connected_by: string;
+  department_id: string | null;
+  provider_account_email: string | null;
+  default_duration: number;
+  buffer_minutes: number;
+  timezone: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Appointment {
+  id: string;
+  calendar_connection_id: string;
+  call_id: string | null;
+  contact_id: string | null;
+  provider_event_id: string | null;
+  provider_booking_url: string | null;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  attendee_name: string | null;
+  attendee_email: string | null;
+  attendee_phone: string | null;
+  status: "confirmed" | "cancelled" | "completed" | "no_show";
+  created_by_ai: boolean;
+  created_at: string;
+  updated_at: string;
+}

@@ -44,7 +44,7 @@ export function CalendarSettings({ departments }: Props) {
   const supabase = createBrowserSupabase();
 
   // Form state
-  const [departmentId, setDepartmentId] = useState<string>("");
+  const [departmentId, setDepartmentId] = useState<string>("__all__");
   const [calcomApiKey, setCalcomApiKey] = useState("");
   const [duration, setDuration] = useState(30);
   const [buffer, setBuffer] = useState(0);
@@ -95,7 +95,7 @@ export function CalendarSettings({ departments }: Props) {
         .from("calendar_connections")
         .insert({
           provider: "calcom",
-          department_id: departmentId || null,
+          department_id: departmentId === "__all__" ? null : departmentId,
           calcom_api_key: calcomApiKey,
           provider_account_email: profile.data?.email || null,
           default_duration: duration,
@@ -135,7 +135,7 @@ export function CalendarSettings({ departments }: Props) {
   }
 
   function resetForm() {
-    setDepartmentId("");
+    setDepartmentId("__all__");
     setCalcomApiKey("");
     setDuration(30);
     setBuffer(0);
@@ -216,7 +216,7 @@ export function CalendarSettings({ departments }: Props) {
                         <SelectValue placeholder="All departments" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All departments</SelectItem>
+                        <SelectItem value="__all__">All departments</SelectItem>
                         {departments.map((d) => (
                           <SelectItem key={d.id} value={d.id}>
                             {d.name}

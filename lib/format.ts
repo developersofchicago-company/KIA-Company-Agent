@@ -92,7 +92,7 @@ export interface TranscriptMessage {
 }
 
 /**
- * Parse the "\n[AI] foo\n[User] bar" format the webhook writes into a list
+ * Parse the "\n[AI] foo\n[User] bar" or "AI: foo\nUser: bar" format the webhook writes into a list
  * of structured chat messages. Falls back to a single AI message if the
  * transcript has no role tags.
  */
@@ -103,22 +103,41 @@ export function parseTranscript(
   const trimmed = transcript.trim();
   if (!trimmed) return [];
 
-  const tagRe = /\[(AI|User)\]\s*/gi;
+  // Match either [AI], [User] OR AI:, User:
+  const tagRe = /(?:\[(AI|User)\]|(AI|User):)\s*/gi;
   if (!tagRe.test(trimmed)) {
     return [{ role: "ai", text: trimmed }];
   }
 
   const out: TranscriptMessage[] = [];
-  const parts = trimmed.split(/\n?\[(AI|User)\]\s*/gi);
-  // split returns [pre, tag1, body1, tag2, body2, ...]
-  for (let i = 1; i < parts.length; i += 2) {
-    const tag = parts[i];
-    const body = parts[i + 1]?.trim();
-    if (!body) continue;
-    out.push({
-      role: /ai/i.test(tag) ? "ai" : "user",
-      text: body,
-    });
+  
+  // Use a regex that matches the start of a message block
+  // It looks for a newline (or start of string) followed by either [Role] or Role:
+  const blockRe = /(?:^|\n)\s*(?:\[(AI|User)\]|(AI|User):)\s*/gi;
+  
+  // Find all matches to get indices
+  const matches = Array.from(trimmed.matchAll(blockRe));
+  
+  if (matches.length === 0) {
+    return [{ role: "ai", text: trimmed }];
   }
+
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    // The role is in capture group 1 (if brackets) or capture group 2 (if colon)
+    const roleString = match[1] || match[2];
+    const role: "ai" | "user" = /ai/i.test(roleString) ? "ai" : "user";
+    
+    // The text body starts after this match ends
+    const startIdx = match.index + match[0].length;
+    // And ends where the next match begins, or end of string
+    const endIdx = i + 1 < matches.length ? matches[i + 1].index : trimmed.length;
+    
+    const text = trimmed.slice(startIdx, endIdx).trim();
+    if (text) {
+      out.push({ role, text });
+    }
+  }
+
   return out.length ? out : [{ role: "ai", text: trimmed }];
 }

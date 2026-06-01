@@ -20,7 +20,7 @@ import { CallTranscriptView } from "@/components/calls/CallTranscriptView";
 import { CallInfoCard } from "@/components/calls/CallInfoCard";
 import { CallActions } from "@/components/calls/CallActions";
 import { CallerHistoryCard } from "@/components/calls/CallerHistoryCard";
-import type { Call, Department, VapiCall } from "@/lib/types";
+import type { Call, Department } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 

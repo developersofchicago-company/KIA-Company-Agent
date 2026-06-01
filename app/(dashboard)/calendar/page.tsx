@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   CalendarDays,
   Clock,
   ExternalLink,
   Loader2,
+  Plus,
   User,
   Video,
 } from "lucide-react";
@@ -70,6 +72,7 @@ function SlotBadge({ time }: { time: string }) {
 // ---------------------------------------------------------------------------
 
 export default function CalendarPage() {
+  const [hasConnection, setHasConnection] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<CalProfile | null>(null);
   const [eventTypes, setEventTypes] = useState<CalEventType[]>([]);
   const [slots, setSlots] = useState<Record<string, CalSlot[]>>({});
@@ -114,9 +117,31 @@ export default function CalendarPage() {
     }
   }, []);
 
+  // Check if calendar is connected
   useEffect(() => {
-    fetchProfile();
-    fetchSlots();
+    async function checkConnection() {
+      try {
+        const res = await fetch("/api/calendar/connections");
+        if (res.ok) {
+          const data = await res.json();
+          const connected = data.connections?.length > 0;
+          setHasConnection(connected);
+          if (connected) {
+            fetchProfile();
+            fetchSlots();
+          } else {
+            setLoading(false);
+          }
+        } else {
+          setHasConnection(false);
+          setLoading(false);
+        }
+      } catch {
+        setHasConnection(false);
+        setLoading(false);
+      }
+    }
+    checkConnection();
   }, [fetchProfile, fetchSlots]);
 
   const totalSlots = Object.values(slots).reduce(
@@ -135,10 +160,32 @@ export default function CalendarPage() {
         </p>
       </header>
 
-      {loading ? (
+      {loading || hasConnection === null ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-dc-blue" />
         </div>
+      ) : !hasConnection ? (
+        <Card className="border-border/60">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+              <CalendarDays className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-dc-navy">
+              No Calendar Connected
+            </h3>
+            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+              Connect your Cal.com account so the AI assistant can check availability and book appointments with callers.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Link href="/settings">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Connect Calendar
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <>
           {/* Profile + Stats */}

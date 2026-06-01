@@ -8,8 +8,6 @@ import { DepartmentCard } from "@/components/dashboard/DepartmentCard";
 import { DepartmentDialog } from "@/components/dashboard/DepartmentDialog";
 import type { Department } from "@/lib/types";
 
-const ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID ?? "";
-
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,13 +61,13 @@ export default function DepartmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-dc-navy">Departments</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-dc-navy">Agents</h1>
           <p className="text-muted-foreground mt-1">
-            Configure departments, routing keywords, and hours. Each card lets you demo the AI live.
+            Configure AI agents, routing keywords, and hours. Each card lets you demo the agent live.
           </p>
         </div>
         <Button onClick={openAdd} className="bg-dc-blue hover:bg-dc-blue-dark text-white gap-2">
-          <Plus className="h-4 w-4" /> Add Department
+          <Plus className="h-4 w-4" /> Add Agent
         </Button>
       </div>
 
@@ -80,9 +78,9 @@ export default function DepartmentsPage() {
       ) : departments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
           <Building2 className="h-12 w-12 text-muted-foreground/40" />
-          <p className="text-muted-foreground">No departments yet.</p>
+          <p className="text-muted-foreground">No agents yet.</p>
           <Button onClick={openAdd} variant="outline" className="gap-2">
-            <Plus className="h-4 w-4" /> Add your first department
+            <Plus className="h-4 w-4" /> Add your first agent
           </Button>
         </div>
       ) : (
@@ -91,7 +89,6 @@ export default function DepartmentsPage() {
             <DepartmentCard
               key={dept.id}
               department={dept}
-              assistantId={ASSISTANT_ID}
               onEdit={openEdit}
               onDelete={handleDelete}
             />

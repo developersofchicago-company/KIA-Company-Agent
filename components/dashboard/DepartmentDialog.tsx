@@ -25,6 +25,8 @@ interface DepartmentDialogProps {
 
 const EMPTY_FORM = {
   name: "",
+  vapi_assistant_id: "",
+  vapi_assistant_number: "",
   phone_numbers: "",
   hours_start: "",
   hours_end: "",
@@ -42,6 +44,8 @@ export function DepartmentDialog({ open, department, onClose, onSaved }: Departm
     if (department) {
       setForm({
         name: department.name,
+        vapi_assistant_id: department.vapi_assistant_id ?? "",
+        vapi_assistant_number: department.vapi_assistant_number ?? "",
         phone_numbers: department.phone_numbers?.join(", ") ?? "",
         hours_start: department.hours_start ?? "",
         hours_end: department.hours_end ?? "",
@@ -64,6 +68,8 @@ export function DepartmentDialog({ open, department, onClose, onSaved }: Departm
 
     const body = {
       name: form.name.trim(),
+      vapi_assistant_id: form.vapi_assistant_id.trim() || null,
+      vapi_assistant_number: form.vapi_assistant_number.trim() || null,
       phone_numbers: form.phone_numbers ? form.phone_numbers.split(",").map((s) => s.trim()).filter(Boolean) : [],
       hours_start: form.hours_start || null,
       hours_end: form.hours_end || null,
@@ -97,13 +103,25 @@ export function DepartmentDialog({ open, department, onClose, onSaved }: Departm
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Department" : "Add Department"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Agent" : "Add Agent"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label htmlFor="dept-name">Name *</Label>
+            <Label htmlFor="dept-name">Agent Name *</Label>
             <Input id="dept-name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Appointment Scheduler" required />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="dept-assistant-id">Vapi Assistant ID</Label>
+            <Input id="dept-assistant-id" value={form.vapi_assistant_id} onChange={(e) => set("vapi_assistant_id", e.target.value)} placeholder="c2a51ca0-beba-4765-bdbd-ec178dabbe63" />
+            <p className="text-xs text-muted-foreground">From your Vapi dashboard — used for the Talk to AI button</p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="dept-assistant-number">Vapi Assistant Phone Number</Label>
+            <Input id="dept-assistant-number" value={form.vapi_assistant_number} onChange={(e) => set("vapi_assistant_number", e.target.value)} placeholder="+12246781234" />
+            <p className="text-xs text-muted-foreground">Phone number linked to this assistant in Vapi</p>
           </div>
 
           <div className="space-y-1">
@@ -143,7 +161,7 @@ export function DepartmentDialog({ open, department, onClose, onSaved }: Departm
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button type="submit" disabled={saving} className="bg-dc-blue hover:bg-dc-blue-dark text-white">
-              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</> : isEditing ? "Update" : "Create"}
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</> : isEditing ? "Update Agent" : "Create Agent"}
             </Button>
           </DialogFooter>
         </form>

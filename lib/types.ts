@@ -12,6 +12,8 @@ export interface Department {
   languages: Language[];
   routing_keywords: string[] | null;
   backup_department_id: string | null;
+  vapi_assistant_id: string | null;
+  vapi_assistant_number: string | null;
   is_active: boolean;
   created_at: string;
 }

@@ -11,16 +11,15 @@ import type { Department } from "@/lib/types";
 
 interface DepartmentCardProps {
   department: Department;
-  assistantId: string;
   onEdit: (department: Department) => void;
   onDelete: (id: string) => void;
 }
 
-export function DepartmentCard({ department, assistantId, onEdit, onDelete }: DepartmentCardProps) {
+export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardProps) {
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`Delete department "${department.name}"?`)) return;
+    if (!confirm(`Delete agent "${department.name}"?`)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/departments/${department.id}`, { method: "DELETE" });
@@ -28,7 +27,7 @@ export function DepartmentCard({ department, assistantId, onEdit, onDelete }: De
       toast.success(`"${department.name}" deleted`);
       onDelete(department.id);
     } catch {
-      toast.error("Failed to delete department");
+      toast.error("Failed to delete agent");
     } finally {
       setDeleting(false);
     }
@@ -69,7 +68,14 @@ export function DepartmentCard({ department, assistantId, onEdit, onDelete }: De
           </div>
         )}
 
-        {department.phone_numbers?.length > 0 && (
+        {department.vapi_assistant_number && (
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <Phone className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{department.vapi_assistant_number}</span>
+          </div>
+        )}
+
+        {!department.vapi_assistant_number && department.phone_numbers?.length > 0 && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <Phone className="h-3.5 w-3.5 shrink-0 mt-0.5" />
             <span>{department.phone_numbers.join(", ")}</span>
@@ -97,7 +103,15 @@ export function DepartmentCard({ department, assistantId, onEdit, onDelete }: De
         )}
 
         <div className="pt-2 border-t">
-          <VapiWebCall assistantId={assistantId} label={`Talk to ${department.name} AI`} className="w-full justify-center" />
+          {department.vapi_assistant_id ? (
+            <VapiWebCall
+              assistantId={department.vapi_assistant_id}
+              label={`Talk to ${department.name} AI`}
+              className="w-full justify-center"
+            />
+          ) : (
+            <p className="text-xs text-center text-muted-foreground py-1">No assistant ID configured</p>
+          )}
         </div>
       </CardContent>
     </Card>

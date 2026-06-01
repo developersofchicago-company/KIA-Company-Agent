@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type LogoSize = "sm" | "md" | "lg";
@@ -9,26 +10,25 @@ interface LogoProps {
   className?: string;
 }
 
-const sizeClasses: Record<LogoSize, { mark: string; sub: string; gap: string }> = {
-  sm: { mark: "text-xl", sub: "text-[10px]", gap: "gap-1.5" },
-  md: { mark: "text-2xl", sub: "text-xs", gap: "gap-2" },
-  lg: { mark: "text-4xl", sub: "text-sm", gap: "gap-2.5" },
+const sizeMap: Record<LogoSize, { img: number; sub: string; gap: string }> = {
+  sm: { img: 32, sub: "text-[10px]", gap: "gap-1.5" },
+  md: { img: 40, sub: "text-xs", gap: "gap-2" },
+  lg: { img: 56, sub: "text-sm", gap: "gap-2.5" },
 };
 
 export function Logo({ size = "md", variant = "full", className }: LogoProps) {
-  const s = sizeClasses[size];
+  const s = sizeMap[size];
 
   return (
     <div className={cn("flex items-center", s.gap, className)}>
-      <span
-        className={cn(
-          "font-extrabold tracking-tight text-dc-blue leading-none",
-          s.mark,
-        )}
-        aria-hidden="true"
-      >
-        DC
-      </span>
+      <Image
+        src="/logo.png"
+        alt="DC Logo"
+        width={s.img}
+        height={s.img}
+        className="object-contain"
+        priority
+      />
       {variant === "full" && (
         <span
           className={cn(

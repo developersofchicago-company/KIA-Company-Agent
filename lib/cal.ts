@@ -3,7 +3,14 @@
 // ---------------------------------------------------------------------------
 
 const CAL_BASE = "https://api.cal.com/v2";
-const CAL_API_VERSION = "2024-08-13";
+
+// Cal.com requires a different API version header per endpoint.
+const CAL_API_VERSION = {
+  eventTypes: "2024-06-14",
+  slots: "2024-08-13",
+  bookings: "2024-08-13",
+  default: "2024-08-13",
+} as const;
 
 function getApiKey(): string {
   const key = process.env.CAL_API_KEY;
@@ -17,12 +24,16 @@ function getEventTypeId(): number {
   return Number(id);
 }
 
-async function calFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function calFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  apiVersion: string = CAL_API_VERSION.default,
+): Promise<T> {
   const res = await fetch(`${CAL_BASE}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${getApiKey()}`,
-      "cal-api-version": CAL_API_VERSION,
+      "cal-api-version": apiVersion,
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
     },
@@ -85,6 +96,8 @@ export interface CalBookingResponse {
 export async function getEventTypes(): Promise<CalEventType[]> {
   const res = await calFetch<{ status: string; data: CalEventType[] }>(
     "/event-types",
+    {},
+    CAL_API_VERSION.eventTypes,
   );
   return res.data;
 }
@@ -106,7 +119,11 @@ export async function getAvailableSlots(
     endTime,
     eventTypeId: String(id),
   });
-  const res = await calFetch<CalSlotsResponse>(`/slots/available?${params}`);
+  const res = await calFetch<CalSlotsResponse>(
+    `/slots/available?${params}`,
+    {},
+    CAL_API_VERSION.slots,
+  );
   return res.data.slots;
 }
 
@@ -127,19 +144,23 @@ export async function createBooking(
   eventTypeId?: number,
 ): Promise<CalBooking> {
   const id = eventTypeId ?? getEventTypeId();
-  const res = await calFetch<CalBookingResponse>("/bookings", {
-    method: "POST",
-    body: JSON.stringify({
-      start,
-      eventTypeId: id,
-      attendee: {
-        name: attendee.name,
-        email: attendee.email,
-        timeZone: attendee.timeZone,
-        language: attendee.language ?? "en",
-      },
-    }),
-  });
+  const res = await calFetch<CalBookingResponse>(
+    "/bookings",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        start,
+        eventTypeId: id,
+        attendee: {
+          name: attendee.name,
+          email: attendee.email,
+          timeZone: attendee.timeZone,
+          language: attendee.language ?? "en",
+        },
+      }),
+    },
+    CAL_API_VERSION.bookings,
+  );
   return res.data;
 }
 

@@ -68,10 +68,11 @@ export function VapiWebCall({ assistantId, label = "Talk to AI", className }: Va
     return (
       <Button
         onClick={startCall}
-        className={cn("gap-2 bg-dc-blue hover:bg-dc-blue-dark text-white", className)}
+        title={label}
+        className={cn("gap-2 bg-dc-blue hover:bg-dc-blue-dark text-white min-w-0", className)}
       >
-        <Mic className="h-4 w-4" />
-        {label}
+        <Mic className="h-4 w-4 shrink-0" />
+        <span className="truncate">{label}</span>
       </Button>
     );
   }

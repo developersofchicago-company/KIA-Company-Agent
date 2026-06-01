@@ -106,7 +106,7 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
           {department.vapi_assistant_id ? (
             <VapiWebCall
               assistantId={department.vapi_assistant_id}
-              label={`Talk to ${department.name} AI`}
+              label="Talk Live"
               className="w-full justify-center"
             />
           ) : (

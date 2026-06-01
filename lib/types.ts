@@ -32,6 +32,7 @@ export interface Call {
   transcript: string | null;
   recording_url: string | null;
   ai_confidence: number | null;
+  cost: number | null;
   notes: string | null;
   tags: string[] | null;
   ivr_completed_at: string | null;

@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       direction,
       status,
       duration_seconds: durationSeconds,
+      cost: vc.cost ?? null,
       transcript: vc.transcript ?? null,
       recording_url: vc.recordingUrl ?? null,
       notes: vc.summary ?? null,

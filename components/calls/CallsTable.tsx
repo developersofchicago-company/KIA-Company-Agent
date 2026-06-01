@@ -100,6 +100,7 @@ export function CallsTable({ calls, departments }: Props) {
               <TableHead className="w-[120px]">Direction</TableHead>
               <TableHead>Department</TableHead>
               <TableHead className="w-[110px]">Duration</TableHead>
+              <TableHead className="w-[90px]">Cost</TableHead>
               <TableHead className="w-[130px]">Status</TableHead>
               <TableHead>Transcript</TableHead>
             </TableRow>
@@ -138,6 +139,9 @@ export function CallsTable({ calls, departments }: Props) {
                 </TableCell>
                 <TableCell className="text-sm">
                   {formatDuration(c.duration_seconds)}
+                </TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {c.cost != null ? `$${c.cost.toFixed(4)}` : "—"}
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={c.status} />
@@ -183,6 +187,11 @@ export function CallsTable({ calls, departments }: Props) {
                 <Badge variant="secondary" className="border-0 bg-muted text-muted-foreground">
                   {formatDuration(c.duration_seconds)}
                 </Badge>
+                {c.cost != null && (
+                  <Badge variant="secondary" className="border-0 bg-muted font-mono text-muted-foreground">
+                    ${c.cost.toFixed(4)}
+                  </Badge>
+                )}
               </div>
               {transcriptPreview(c.transcript) && (
                 <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">

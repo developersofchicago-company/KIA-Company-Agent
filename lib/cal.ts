@@ -255,6 +255,29 @@ export async function resolveFirstEventTypeId(
   return types[0]?.id ?? null;
 }
 
+/** Find event type by name (case-insensitive partial match). */
+export async function resolveEventTypeByName(
+  apiKey: string,
+  serviceName: string,
+): Promise<{ id: number; title: string; slug: string; lengthInMinutes: number } | null> {
+  const types = await getEventTypes(apiKey);
+  const search = serviceName.toLowerCase().trim();
+  
+  // Try exact match first
+  const exact = types.find(t => 
+    t.title.toLowerCase() === search || 
+    t.slug.toLowerCase() === search
+  );
+  if (exact) return exact;
+  
+  // Try partial match
+  const partial = types.find(t => 
+    t.title.toLowerCase().includes(search) || 
+    t.slug.toLowerCase().includes(search)
+  );
+  return partial ?? null;
+}
+
 interface SaveAppointmentInput {
   calendar_connection_id: string;
   call_id?: string | null;

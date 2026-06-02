@@ -94,18 +94,34 @@ export default function AssistantPage() {
       {
         type: "function",
         function: {
+          name: "list_services",
+          description: "List all available appointment services/types from the connected Cal.com calendar. Call this first when the caller wants to book, so they can choose which service they need.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: [],
+          },
+        },
+      },
+      {
+        type: "function",
+        function: {
           name: "check_availability",
-          description: "Check available appointment slots from the connected Cal.com calendar. Call this when the caller wants to schedule and you need to find open times.",
+          description: "Check available appointment slots for a specific service from the connected Cal.com calendar. Call this after the caller has chosen a service from list_services.",
           parameters: {
             type: "object",
             properties: {
+              service_name: {
+                type: "string",
+                description: "The exact service name the caller chose (e.g., 'Discovery Call' or 'Security Consultation for Vibe Coded Apps')",
+              },
               days: {
                 type: "number",
                 description: "Number of days to look ahead for availability (default 7, max 30)",
                 default: 7,
               },
             },
-            required: [],
+            required: ["service_name"],
           },
         },
       },
@@ -121,6 +137,10 @@ export default function AssistantPage() {
                 type: "string",
                 description: "Exact ISO 8601 datetime of the chosen slot (from check_availability results)",
               },
+              service_name: {
+                type: "string",
+                description: "The service name they selected (e.g., 'Discovery Call')",
+              },
               name: {
                 type: "string",
                 description: "Full name of the person booking",
@@ -133,12 +153,8 @@ export default function AssistantPage() {
                 type: "string",
                 description: "Phone number of the person booking",
               },
-              service_type: {
-                type: "string",
-                description: "Type of service or appointment (optional)",
-              },
             },
-            required: ["start_time", "name", "email"],
+            required: ["start_time", "service_name", "name", "email"],
           },
         },
       },

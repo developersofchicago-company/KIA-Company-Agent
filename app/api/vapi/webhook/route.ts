@@ -11,6 +11,8 @@ import {
 import {
   getActiveCalConnection,
   resolveFirstEventTypeId,
+  resolveEventTypeByName,
+  getEventTypes,
   getAvailableSlots,
   createBooking,
   saveAppointment,
@@ -198,14 +200,53 @@ async function handleFunctionCall(
       ? { results: [{ toolCallId, result: JSON.stringify(result) }] }
       : { result };
 
+  // ── Cal.com: List available services ────────────────────────────────────
+  if (name === "list_services" || name === "listServices") {
+    try {
+      const conn = await getActiveCalConnection(call.assistantId);
+      if (!conn) return reply({ error: "No calendar is connected yet." });
+
+      const eventTypes = await getEventTypes(conn.calcom_api_key);
+      const services = eventTypes.map(t => ({
+        name: t.title,
+        slug: t.slug,
+        duration_minutes: t.lengthInMinutes,
+        description: t.description,
+      }));
+
+      LOG("list_services", { count: services.length });
+      return reply({
+        services,
+        message: services.length 
+          ? `We offer ${services.length} services: ${services.map(s => s.name).join(", ")}. Which would you like to book?`
+          : "No services are currently configured on the calendar.",
+      });
+    } catch (err) {
+      LOG("list_services error", err);
+      return reply({ error: "Could not fetch services right now." });
+    }
+  }
+
   // ── Cal.com: Check availability ─────────────────────────────────────────
   if (name === "check_availability" || name === "checkAvailability") {
     try {
       const conn = await getActiveCalConnection(call.assistantId);
       if (!conn) return reply({ error: "No calendar is connected yet." });
 
-      const eventTypeId = await resolveFirstEventTypeId(conn.calcom_api_key);
-      if (!eventTypeId) return reply({ error: "No event type found on the calendar." });
+      // Get service name from args and find matching event type
+      const serviceName = (args.service_name ?? args.serviceName ?? args.service) as string | undefined;
+      if (!serviceName) {
+        return reply({ error: "Please specify which service you want to check availability for. Call list_services first to see options." });
+      }
+
+      const eventType = await resolveEventTypeByName(conn.calcom_api_key, serviceName);
+      if (!eventType) {
+        const allTypes = await getEventTypes(conn.calcom_api_key);
+        const availableServices = allTypes.map(t => t.title).join(", ");
+        return reply({ 
+          error: `Could not find a service matching "${serviceName}". Available services: ${availableServices}` 
+        });
+      }
 
       const days = Number(args.days) || 3;
       const now = new Date();
@@ -214,7 +255,7 @@ async function handleFunctionCall(
       const slots = await getAvailableSlots(
         now.toISOString(),
         end.toISOString(),
-        eventTypeId,
+        eventType.id,
         conn.calcom_api_key,
       );
 
@@ -227,13 +268,15 @@ async function handleFunctionCall(
           );
         }
       }
-      LOG("check_availability", { total: available.length });
+      LOG("check_availability", { service: eventType.title, total: available.length });
       return reply({
+        service_name: eventType.title,
+        duration_minutes: eventType.lengthInMinutes,
         available_slots: available.slice(0, 10),
         total_slots: available.length,
         message: available.length
-          ? `There are ${available.length} open slots in the next ${days} days.`
-          : `No open slots in the next ${days} days.`,
+          ? `There are ${available.length} open slots for ${eventType.title} in the next ${days} days.`
+          : `No open slots for ${eventType.title} in the next ${days} days.`,
       });
     } catch (err) {
       LOG("check_availability error", err);
@@ -247,8 +290,20 @@ async function handleFunctionCall(
       const conn = await getActiveCalConnection(call.assistantId);
       if (!conn) return reply({ error: "No calendar is connected yet." });
 
-      const eventTypeId = await resolveFirstEventTypeId(conn.calcom_api_key);
-      if (!eventTypeId) return reply({ error: "No event type found on the calendar." });
+      // Get service name and find matching event type
+      const serviceName = (args.service_name ?? args.serviceName ?? args.service_type ?? args.serviceType) as string | undefined;
+      if (!serviceName) {
+        return reply({ error: "Please specify which service to book. Call list_services first to see options." });
+      }
+
+      const eventType = await resolveEventTypeByName(conn.calcom_api_key, serviceName);
+      if (!eventType) {
+        const allTypes = await getEventTypes(conn.calcom_api_key);
+        const availableServices = allTypes.map(t => t.title).join(", ");
+        return reply({ 
+          error: `Could not find a service matching "${serviceName}". Available services: ${availableServices}` 
+        });
+      }
 
       const startTime = (args.start_time ?? args.startTime ?? args.time) as string | undefined;
       const attendeeName = (args.name as string | undefined) ?? "Caller";
@@ -261,7 +316,7 @@ async function handleFunctionCall(
       const booking = await createBooking(
         startTime,
         { name: attendeeName, email: attendeeEmail, timeZone: tz },
-        eventTypeId,
+        eventType.id,
         conn.calcom_api_key,
       );
 

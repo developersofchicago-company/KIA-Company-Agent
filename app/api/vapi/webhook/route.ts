@@ -10,7 +10,6 @@ import {
 } from "@/lib/db";
 import {
   getActiveCalConnection,
-  resolveFirstEventTypeId,
   resolveEventTypeByName,
   getEventTypes,
   getAvailableSlots,

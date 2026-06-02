@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -50,11 +50,7 @@ export function CalendarSettings({ departments }: Props) {
   const [timezone, setTimezone] = useState("America/New_York");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadConnections();
-  }, []);
-
-  async function loadConnections() {
+  const loadConnections = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("calendar_connections")
@@ -67,7 +63,11 @@ export function CalendarSettings({ departments }: Props) {
       setConnections(data || []);
     }
     setLoading(false);
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    loadConnections();
+  }, [loadConnections]);
 
   async function handleAdd() {
     setSaving(true);

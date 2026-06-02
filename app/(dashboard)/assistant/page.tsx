@@ -89,6 +89,61 @@ export default function AssistantPage() {
     if (!name.trim()) return toast.error("Assistant name is required");
     setSaving(true);
 
+    // Calendar tools for checking availability and booking
+    const calendarTools = [
+      {
+        type: "function",
+        function: {
+          name: "check_availability",
+          description: "Check available appointment slots from the connected Cal.com calendar. Call this when the caller wants to schedule and you need to find open times.",
+          parameters: {
+            type: "object",
+            properties: {
+              days: {
+                type: "number",
+                description: "Number of days to look ahead for availability (default 7, max 30)",
+                default: 7,
+              },
+            },
+            required: [],
+          },
+        },
+      },
+      {
+        type: "function",
+        function: {
+          name: "book_appointment",
+          description: "Book an appointment on the Cal.com calendar. Only call this after the caller has confirmed a specific time slot from the availability results.",
+          parameters: {
+            type: "object",
+            properties: {
+              start_time: {
+                type: "string",
+                description: "Exact ISO 8601 datetime of the chosen slot (from check_availability results)",
+              },
+              name: {
+                type: "string",
+                description: "Full name of the person booking",
+              },
+              email: {
+                type: "string",
+                description: "Email address of the person booking",
+              },
+              phone: {
+                type: "string",
+                description: "Phone number of the person booking",
+              },
+              service_type: {
+                type: "string",
+                description: "Type of service or appointment (optional)",
+              },
+            },
+            required: ["start_time", "name", "email"],
+          },
+        },
+      },
+    ];
+
     // Merge changes into nested format expected by Vapi
     const updatePayload = {
       name: name.trim(),
@@ -105,6 +160,7 @@ export default function AssistantPage() {
         language,
         model: "nova-2",
       },
+      tools: calendarTools,
     };
 
     try {

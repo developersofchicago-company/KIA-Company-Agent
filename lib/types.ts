@@ -130,6 +130,19 @@ export interface VapiCall {
   updatedAt?: string;
 }
 
+export interface VapiFunctionTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, unknown>;
+      required?: string[];
+    };
+  };
+}
+
 export interface VapiAssistant {
   id: string;
   orgId?: string;
@@ -151,6 +164,8 @@ export interface VapiAssistant {
   serverUrl?: string;
   endCallFunctionEnabled?: boolean;
   recordingEnabled?: boolean;
+  tools?: VapiFunctionTool[];
+  functions?: VapiFunctionTool[]; // legacy naming
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;

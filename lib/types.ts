@@ -1,4 +1,29 @@
 export type Language = "urdu" | "english";
+
+// ============================================================================
+// Client Files
+// ============================================================================
+
+export type ClientFileCategory =
+  | "wave_recording"
+  | "sales_report"
+  | "training"
+  | "call_log"
+  | "other";
+
+export interface ClientFile {
+  id: string;
+  file_name: string;
+  wasabi_key: string;
+  file_size: number | null;
+  file_type: string | null;
+  category: ClientFileCategory;
+  notes: string | null;
+  uploaded_by: string;
+  download_url: string | null;
+  created_at: string;
+}
+
 export type CallDirection = "inbound" | "outbound";
 export type CallStatus = "completed" | "missed" | "failed" | "in_progress";
 export type TeamRole = "admin" | "manager" | "viewer";
@@ -130,25 +155,6 @@ export interface VapiCall {
   updatedAt?: string;
 }
 
-export interface VapiFunctionTool {
-  type: "function";
-  id?: string;
-  function?: {
-    name: string;
-    description: string;
-    parameters: {
-      type: "object";
-      properties: Record<string, unknown>;
-      required?: string[];
-    };
-  };
-}
-
-export interface VapiToolReference {
-  type: "function";
-  id: string;
-}
-
 export interface VapiAssistant {
   id: string;
   orgId?: string;
@@ -170,9 +176,6 @@ export interface VapiAssistant {
   serverUrl?: string;
   endCallFunctionEnabled?: boolean;
   recordingEnabled?: boolean;
-  tools?: (VapiFunctionTool | VapiToolReference)[];
-  functions?: VapiFunctionTool[]; // legacy naming
-  toolIds?: string[]; // Alternative: just IDs
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;

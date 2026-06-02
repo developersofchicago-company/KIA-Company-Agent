@@ -3,13 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2,
-  CalendarDays,
-  LayoutDashboard,
+  FolderOpen,
   LogOut,
-  Phone,
-  PhoneCall,
-  Settings,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -27,12 +22,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Call History", href: "/calls", icon: Phone },
-  { label: "Dialer", href: "/dialer", icon: PhoneCall },
-  { label: "Calendar", href: "/calendar", icon: CalendarDays },
-  { label: "Agents", href: "/departments", icon: Building2 },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Client Files", href: "/client-files", icon: FolderOpen },
 ];
 
 interface SidebarProps {
@@ -81,7 +71,7 @@ export function Sidebar({
         {/* Logo + mobile close */}
         <div className="flex h-16 shrink-0 items-center justify-between px-6">
           <Link
-            href="/dashboard"
+            href="/client-files"
             onClick={onMobileClose}
             className="flex items-center"
           >

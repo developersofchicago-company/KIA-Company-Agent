@@ -27,6 +27,14 @@ export function createAdminSupabase(): SupabaseClient {
 
   adminClient = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      // Next.js patches fetch and caches responses by default in the App
+      // Router. Without this, PostgREST reads get served from a stale Data
+      // Cache (each query URL cached independently), so admin routes return
+      // outdated rows. Force every request to hit the live database.
+      fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+        fetch(input, { ...init, cache: "no-store" }),
+    },
   });
   cachedKey = credKey;
   return adminClient;

@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ files: data ?? [], total: count ?? 0, page, pageSize });
+    return NextResponse.json(
+      { files: data ?? [], total: count ?? 0, page, pageSize },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }

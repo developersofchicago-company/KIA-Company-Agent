@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/shared/Logo";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { SignupForm } from "@/components/auth/SignupForm";
 import {
   Card,
   CardContent,
@@ -12,10 +12,10 @@ import {
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export const metadata = {
-  title: "Sign in — KIA Client Portal",
+  title: "Sign up — KIA Client Portal",
 };
 
-export default async function LoginPage() {
+export default async function SignupPage() {
   const supabase = createServerSupabase();
   const {
     data: { user },
@@ -27,7 +27,6 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left: DC brand panel (desktop only) */}
       <aside
         className="relative hidden w-1/2 overflow-hidden bg-dc-navy text-white lg:flex lg:flex-col lg:items-center lg:justify-center lg:px-12"
         aria-hidden="true"
@@ -66,7 +65,6 @@ export default async function LoginPage() {
         </div>
       </aside>
 
-      {/* Right: login form */}
       <main className="flex w-full items-center justify-center px-4 py-12 sm:px-8 lg:w-1/2">
         <div className="w-full max-w-md">
           <div className="mb-8 flex justify-center lg:hidden">
@@ -76,14 +74,14 @@ export default async function LoginPage() {
           <Card className="border-border/60 shadow-xl shadow-dc-navy/5">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-dc-navy">
-                Welcome back
+                Create your account
               </CardTitle>
               <CardDescription>
-                Sign in to the KIA Client Portal
+                Enter your email to receive a verification code
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LoginForm />
+              <SignupForm />
             </CardContent>
           </Card>
         </div>

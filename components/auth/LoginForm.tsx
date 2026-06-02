@@ -159,14 +159,14 @@ export function LoginForm() {
         )}
       </Button>
 
-      <p className="text-center text-xs text-muted-foreground">
-        Need help?{" "}
-        <a
-          href="mailto:inquiry@developersofchicago.com"
+      <p className="text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/signup"
           className="font-medium text-dc-blue hover:text-dc-blue-dark hover:underline"
         >
-          inquiry@developersofchicago.com
-        </a>
+          Sign up
+        </Link>
       </p>
     </form>
   );

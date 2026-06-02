@@ -15,7 +15,11 @@ export const metadata = {
   title: "Sign in — KIA Client Portal",
 };
 
-export default async function LoginPage() {
+interface LoginPageProps {
+  searchParams: { error?: string };
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const supabase = createServerSupabase();
   const {
     data: { user },
@@ -24,6 +28,8 @@ export default async function LoginPage() {
   if (user) {
     redirect("/client-files");
   }
+
+  const linkExpired = searchParams.error === "link_expired";
 
   return (
     <div className="flex min-h-screen">
@@ -83,6 +89,11 @@ export default async function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {linkExpired && (
+                <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  Your link has expired. Please request a new one.
+                </div>
+              )}
               <LoginForm />
             </CardContent>
           </Card>

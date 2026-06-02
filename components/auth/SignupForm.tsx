@@ -44,6 +44,7 @@ export function SignupForm() {
       options: {
         data: { full_name: values.fullName },
         shouldCreateUser: true,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 

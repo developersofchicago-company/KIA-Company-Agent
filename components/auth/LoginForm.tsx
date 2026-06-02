@@ -42,6 +42,7 @@ export function LoginForm() {
       email: values.email,
       options: {
         shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 

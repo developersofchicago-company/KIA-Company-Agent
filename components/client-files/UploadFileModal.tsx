@@ -37,6 +37,17 @@ const CATEGORIES = [
 
 const ACCEPTED = ".wav,.mp3,.pdf,.xlsx,.xls,.csv,.docx,.doc,.txt,.zip,.rar,.jpg,.jpeg,.png";
 
+// File-type filter for the picker — controls which files the browse dialog shows.
+const FILE_TYPES = [
+  { value: "all",         label: "All Supported Types",     accept: ACCEPTED,            hint: "WAV, MP3, PDF, XLSX, CSV, DOCX, TXT, ZIP, JPG, PNG" },
+  { value: "audio",       label: "Audio (WAV, MP3)",         accept: ".wav,.mp3",         hint: "WAV, MP3" },
+  { value: "pdf",         label: "PDF",                      accept: ".pdf",              hint: "PDF" },
+  { value: "spreadsheet", label: "Spreadsheet (XLSX, CSV)",  accept: ".xlsx,.xls,.csv",   hint: "XLSX, XLS, CSV" },
+  { value: "document",    label: "Document (DOCX, TXT)",     accept: ".docx,.doc,.txt",   hint: "DOCX, DOC, TXT" },
+  { value: "image",       label: "Image (JPG, PNG)",         accept: ".jpg,.jpeg,.png",   hint: "JPG, JPEG, PNG" },
+  { value: "archive",     label: "Archive (ZIP)",            accept: ".zip,.rar",         hint: "ZIP, RAR" },
+];
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -46,10 +57,13 @@ function formatBytes(bytes: number) {
 export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [category, setCategory] = useState("other");
+  const [fileType, setFileType] = useState("all");
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedType = FILE_TYPES.find((t) => t.value === fileType) ?? FILE_TYPES[0];
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -106,6 +120,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
       toast.success(`${successCount} file${successCount > 1 ? "s" : ""} uploaded successfully.`);
       setFiles([]);
       setCategory("other");
+      setFileType("all");
       setNotes("");
       onUploaded();
       onClose();
@@ -119,6 +134,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
     if (uploading) return;
     setFiles([]);
     setCategory("other");
+    setFileType("all");
     setNotes("");
     onClose();
   }
@@ -131,6 +147,23 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
         </DialogHeader>
 
         <div className="min-w-0 space-y-4">
+          {/* File type filter */}
+          <div className="space-y-1.5">
+            <Label htmlFor="filetype">File Type</Label>
+            <Select value={fileType} onValueChange={setFileType}>
+              <SelectTrigger id="filetype">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FILE_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Drop zone */}
           <div
             className={cn(
@@ -148,7 +181,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
               ref={inputRef}
               type="file"
               multiple
-              accept={ACCEPTED}
+              accept={selectedType.accept}
               className="hidden"
               onChange={handleFiles}
             />
@@ -157,7 +190,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
               Drop files here or <span className="text-dc-blue">browse</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              WAV, MP3, PDF, XLSX, CSV, DOCX, TXT, ZIP, JPG, PNG
+              {selectedType.hint}
             </p>
           </div>
 

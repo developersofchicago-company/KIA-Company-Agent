@@ -188,13 +188,16 @@ export async function POST(request: NextRequest) {
     console.error("Failed to setup Vapi tools:", error);
     const err = error as Error;
     // Check if it's a VapiError with more details
-    const vapiError = err as { status?: number; body?: unknown };
+    const status = (error as { status?: number }).status;
+    const body = (error as { body?: unknown }).body;
+    
     return new Response(
       JSON.stringify({ 
         error: "Failed to setup tools", 
-        details: err.message,
-        status: vapiError.status,
-        vapiResponse: vapiError.body,
+        message: err.message,
+        status: status,
+        vapiError: body,
+        stack: err.stack,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );

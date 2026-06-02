@@ -132,7 +132,8 @@ export interface VapiCall {
 
 export interface VapiFunctionTool {
   type: "function";
-  function: {
+  id?: string;
+  function?: {
     name: string;
     description: string;
     parameters: {
@@ -141,6 +142,11 @@ export interface VapiFunctionTool {
       required?: string[];
     };
   };
+}
+
+export interface VapiToolReference {
+  type: "function";
+  id: string;
 }
 
 export interface VapiAssistant {
@@ -164,8 +170,9 @@ export interface VapiAssistant {
   serverUrl?: string;
   endCallFunctionEnabled?: boolean;
   recordingEnabled?: boolean;
-  tools?: VapiFunctionTool[];
+  tools?: (VapiFunctionTool | VapiToolReference)[];
   functions?: VapiFunctionTool[]; // legacy naming
+  toolIds?: string[]; // Alternative: just IDs
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;

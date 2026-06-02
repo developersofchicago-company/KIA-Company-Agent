@@ -135,4 +135,60 @@ export function getPhoneNumbers(): Promise<VapiPhoneNumber[]> {
   return vapiFetch<VapiPhoneNumber[]>("/phone-number");
 }
 
+// ---------------------------------------------------------------------------
+// Tools
+// ---------------------------------------------------------------------------
+
+export interface VapiTool {
+  id?: string;
+  type: "function" | "apiRequest" | "code";
+  function?: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, unknown>;
+      required?: string[];
+    };
+  };
+  server?: {
+    url: string;
+    timeoutSeconds?: number;
+  };
+  async?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export function createTool(tool: Omit<VapiTool, "id" | "createdAt" | "updatedAt">): Promise<VapiTool> {
+  return vapiFetch<VapiTool>("/tool", {
+    method: "POST",
+    body: JSON.stringify(tool),
+  });
+}
+
+export function getTools(): Promise<VapiTool[]> {
+  return vapiFetch<VapiTool[]>("/tool");
+}
+
+export function getTool(id: string): Promise<VapiTool> {
+  return vapiFetch<VapiTool>(`/tool/${id}`);
+}
+
+export function updateTool(
+  id: string,
+  tool: Partial<Omit<VapiTool, "id" | "createdAt" | "updatedAt">>,
+): Promise<VapiTool> {
+  return vapiFetch<VapiTool>(`/tool/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(tool),
+  });
+}
+
+export function deleteTool(id: string): Promise<void> {
+  return vapiFetch<void>(`/tool/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export { VapiError };

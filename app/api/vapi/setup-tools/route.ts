@@ -154,9 +154,24 @@ export async function POST(request: NextRequest) {
     // 5. Attach tools to assistant
     const toolIds = [listServicesId, checkAvailId, bookId].filter(Boolean) as string[];
     
-    await updateAssistant(assistantId, {
-      toolIds: toolIds,
-    });
+    // Try attaching via tools array with references
+    try {
+      await updateAssistant(assistantId, {
+        tools: toolIds.map(id => ({ type: "function" as const, id })),
+      });
+    } catch (attachErr) {
+      console.error("Failed to attach tools via 'tools' field:", attachErr);
+      
+      // Fallback: try toolIds field
+      try {
+        await updateAssistant(assistantId, {
+          toolIds: toolIds,
+        });
+      } catch (attachErr2) {
+        console.error("Failed to attach tools via 'toolIds' field:", attachErr2);
+        throw new Error(`Could not attach tools to assistant: ${(attachErr as Error).message}`);
+      }
+    }
 
     return new Response(
       JSON.stringify({
@@ -171,10 +186,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Failed to setup Vapi tools:", error);
+    const err = error as Error;
+    // Check if it's a VapiError with more details
+    const vapiError = err as { status?: number; body?: unknown };
     return new Response(
       JSON.stringify({ 
         error: "Failed to setup tools", 
-        details: (error as Error).message 
+        details: err.message,
+        status: vapiError.status,
+        vapiResponse: vapiError.body,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );

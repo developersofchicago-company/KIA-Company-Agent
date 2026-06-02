@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
+import { Loader2, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -21,14 +20,12 @@ const schema = z.object({
     .string()
     .min(1, "Email is required")
     .email("Enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type SignupValues = z.infer<typeof schema>;
 
 export function SignupForm() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -36,28 +33,27 @@ export function SignupForm() {
     formState: { errors, isSubmitting },
   } = useForm<SignupValues>({
     resolver: zodResolver(schema),
-    defaultValues: { fullName: "", email: "", password: "" },
+    defaultValues: { fullName: "", email: "" },
   });
 
   async function onSubmit(values: SignupValues) {
     const supabase = createBrowserSupabase();
 
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithOtp({
       email: values.email,
-      password: values.password,
       options: {
         data: { full_name: values.fullName },
+        shouldCreateUser: true,
       },
     });
 
     if (error) {
-      toast.error(error.message || "Could not create account.");
+      toast.error(error.message || "Could not send verification code.");
       return;
     }
 
-    toast.success("Account created! Welcome.");
-    router.push("/client-files");
-    router.refresh();
+    toast.success("Check your email for the verification code!");
+    router.push(`/verify?email=${encodeURIComponent(values.email)}`);
   }
 
   return (
@@ -126,43 +122,9 @@ export function SignupForm() {
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="signup-password">Password</Label>
-        <div className="relative">
-          <Lock
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            id="signup-password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            placeholder="At least 6 characters"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.password}
-            aria-describedby={errors.password ? "signup-password-error" : undefined}
-            className={cn(
-              "pl-9 pr-10",
-              errors.password && "border-destructive focus-visible:ring-destructive",
-            )}
-            {...register("password")}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            disabled={isSubmitting}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:text-dc-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-blue"
-          >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-        {errors.password && (
-          <p id="signup-password-error" className="text-xs text-destructive">
-            {errors.password.message}
-          </p>
-        )}
-      </div>
+      <p className="text-xs text-muted-foreground">
+        We&apos;ll send a 6-digit verification code to your email
+      </p>
 
       <Button
         type="submit"
@@ -172,10 +134,10 @@ export function SignupForm() {
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            Creating account...
+            Sending code...
           </>
         ) : (
-          "Create account"
+          "Send verification code"
         )}
       </Button>
 

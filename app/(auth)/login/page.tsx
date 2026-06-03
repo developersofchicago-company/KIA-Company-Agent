@@ -16,7 +16,7 @@ export const metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: { error?: string };
+  searchParams: { error?: string; message?: string };
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -30,6 +30,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const linkExpired = searchParams.error === "link_expired";
+  const emailConfirmed = searchParams.message === "email_confirmed";
 
   return (
     <div className="flex min-h-screen">
@@ -92,6 +93,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               {linkExpired && (
                 <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   Your link has expired. Please request a new one.
+                </div>
+              )}
+              {emailConfirmed && (
+                <div className="mb-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
+                  Email confirmed successfully! Please login with your credentials.
                 </div>
               )}
               <LoginForm />

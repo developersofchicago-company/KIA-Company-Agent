@@ -97,12 +97,12 @@ export function SignupForm() {
   async function onPasswordSubmit(values: PasswordValues) {
     const supabase = createBrowserSupabase();
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
         data: { full_name: values.fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?type=email_confirmation`,
       },
     });
 
@@ -111,15 +111,8 @@ export function SignupForm() {
       return;
     }
 
-    // Check if email confirmation is required
-    if (data?.user?.identities?.length === 0) {
-      toast.success("Account created! Please check your email to confirm your account.");
-      return;
-    }
-
-    toast.success("Account created successfully!");
-    router.push("/client-files");
-    router.refresh();
+    // Email confirmation is required - don't log the user in yet
+    toast.success("Account created! Please check your email and click the confirmation link to verify your account.");
   }
 
   return (

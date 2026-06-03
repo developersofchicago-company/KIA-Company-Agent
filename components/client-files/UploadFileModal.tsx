@@ -12,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface UploadFileModalProps {
@@ -40,7 +47,6 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [fileStatuses, setFileStatuses] = useState<("pending" | "uploading" | "done" | "error")[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -168,11 +174,9 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
     }
 
     setUploading(true);
-    setCurrentIndex(0);
     setFileStatuses(files.map(() => "pending"));
 
     const CONCURRENCY = 5; // Upload 5 files at a time
-    let completedCount = 0;
     let successCount = 0;
     let failCount = 0;
 
@@ -186,13 +190,9 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
     // Process batches sequentially, files within batch in parallel
     for (const batch of batches) {
       const results = await Promise.all(
-        batch.map(async (index) => {
-          setCurrentIndex(index);
-          return uploadSingleFile(files[index], index);
-        })
+        batch.map(async (index) => uploadSingleFile(files[index], index))
       );
 
-      completedCount += batch.length;
       results.forEach((r) => {
         if (r.success) successCount++;
         else failCount++;

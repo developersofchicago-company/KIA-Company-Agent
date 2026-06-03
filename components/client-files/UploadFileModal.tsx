@@ -229,17 +229,12 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
       toast.error(`${failCount} file${failCount > 1 ? "s" : ""} failed to upload.`);
     }
 
-    // Clear completed files, keep failed ones for retry
-    const failedFiles = files.filter((_, i) => fileStatuses[i] === "error" || (fileStatuses[i] !== "done" && uploading === false));
-    if (failedFiles.length === 0) {
+    // Clear all if no failures
+    if (failCount === 0) {
       setFiles([]);
       setFileStatuses([]);
       setNotes("");
       onClose();
-    } else {
-      setFiles(failedFiles);
-      setFileStatuses(failedFiles.map(() => "pending"));
-      toast.info(`${failedFiles.length} file(s) remaining. You can retry them.`);
     }
   }
 

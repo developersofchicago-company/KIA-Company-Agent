@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Lock, Mail, Sparkles, User } from "lucide-react";
+import { Loader2, Lock, Mail, Sparkles, User, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -29,7 +29,13 @@ const passwordSchema = z.object({
     .string()
     .min(1, "Email is required")
     .email("Enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
 type MagicLinkValues = z.infer<typeof magicLinkSchema>;
@@ -51,11 +57,22 @@ export function SignupForm() {
   const {
     register: registerPassword,
     handleSubmit: handleSubmitPassword,
+    watch: watchPassword,
     formState: { errors: passwordErrors, isSubmitting: isSubmittingPassword },
   } = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
     defaultValues: { fullName: "", email: "", password: "" },
   });
+
+  const passwordValue = watchPassword("password");
+
+  const passwordRequirements = [
+    { label: "At least 8 characters", met: passwordValue?.length >= 8 },
+    { label: "One uppercase letter", met: /[A-Z]/.test(passwordValue || "") },
+    { label: "One lowercase letter", met: /[a-z]/.test(passwordValue || "") },
+    { label: "One number", met: /[0-9]/.test(passwordValue || "") },
+    { label: "One special character", met: /[^A-Za-z0-9]/.test(passwordValue || "") },
+  ];
 
   async function onMagicLinkSubmit(values: MagicLinkValues) {
     const supabase = createBrowserSupabase();
@@ -75,17 +92,17 @@ export function SignupForm() {
     }
 
     toast.success("Check your email for the magic link!");
-    router.push(`/check-email?email=${encodeURIComponent(values.email)}`);
   }
 
   async function onPasswordSubmit(values: PasswordValues) {
     const supabase = createBrowserSupabase();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
         data: { full_name: values.fullName },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
@@ -94,7 +111,13 @@ export function SignupForm() {
       return;
     }
 
-    toast.success("Account created!");
+    // Check if email confirmation is required
+    if (data?.user?.identities?.length === 0) {
+      toast.success("Account created! Please check your email to confirm your account.");
+      return;
+    }
+
+    toast.success("Account created successfully!");
     router.push("/client-files");
     router.refresh();
   }
@@ -224,6 +247,22 @@ export function SignupForm() {
                 {passwordErrors.password.message}
               </p>
             )}
+
+            {/* Password Requirements */}
+            <div className="space-y-1 pt-1">
+              {passwordRequirements.map((req) => (
+                <div key={req.label} className="flex items-center gap-2 text-xs">
+                  {req.met ? (
+                    <Check className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <X className="h-3 w-3 text-muted-foreground" />
+                  )}
+                  <span className={req.met ? "text-green-600" : "text-muted-foreground"}>
+                    {req.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <Button
@@ -337,7 +376,7 @@ export function SignupForm() {
           href="/login"
           className="font-medium text-dc-blue hover:text-dc-blue-dark hover:underline"
         >
-          Sign in
+          Login
         </Link>
       </p>
     </div>

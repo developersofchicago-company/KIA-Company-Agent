@@ -72,7 +72,6 @@ export function LoginForm() {
     }
 
     toast.success("Check your email for the magic link!");
-    router.push(`/check-email?email=${encodeURIComponent(values.email)}`);
   }
 
   async function onPasswordSubmit(values: PasswordValues) {
@@ -129,7 +128,7 @@ export function LoginForm() {
           onSubmit={handleSubmitPassword(onPasswordSubmit)}
           noValidate
           className="space-y-5"
-          aria-label="Sign in with password"
+          aria-label="Login with password"
         >
           <div className="space-y-2">
             <Label htmlFor="password-email">Email</Label>
@@ -218,7 +217,7 @@ export function LoginForm() {
           onSubmit={handleSubmitMagicLink(onMagicLinkSubmit)}
           noValidate
           className="space-y-5"
-          aria-label="Sign in with magic link"
+          aria-label="Login with magic link"
         >
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

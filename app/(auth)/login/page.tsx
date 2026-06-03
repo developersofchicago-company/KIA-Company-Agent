@@ -12,7 +12,7 @@ import {
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export const metadata = {
-  title: "Sign in — KIA Client Portal",
+  title: "Login — KIA Client Portal",
 };
 
 interface LoginPageProps {
@@ -82,10 +82,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <Card className="border-border/60 shadow-xl shadow-dc-navy/5">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-dc-navy">
-                Welcome back
+                Login
               </CardTitle>
               <CardDescription>
-                Sign in to access your files and account
+                Login to access your files and account
               </CardDescription>
             </CardHeader>
             <CardContent>

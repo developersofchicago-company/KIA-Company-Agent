@@ -20,6 +20,25 @@ interface UploadFileModalProps {
   onUploaded: () => void;
 }
 
+type CategoryId = "wave_recording" | "sales_report" | "training" | "call_log" | "other";
+
+const EXTENSION_CATEGORY: Record<string, CategoryId> = {
+  wav: "wave_recording",
+  mp3: "wave_recording",
+  pdf: "sales_report",
+  doc: "training",
+  docx: "training",
+  txt: "training",
+  xlsx: "call_log",
+  xls: "call_log",
+  csv: "call_log",
+};
+
+function determineCategory(file: File): CategoryId {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return EXTENSION_CATEGORY[ext] ?? "other";
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -63,6 +82,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
 
     try {
       // Step 1: Get presigned URL from server
+      const category = determineCategory(file);
       let presignRes: Response;
       try {
         presignRes = await fetch("/api/client-files/presign", {
@@ -72,7 +92,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
             fileName: file.name,
             fileType: file.type || "application/octet-stream",
             fileSize: file.size,
-            category: "other",
+            category,
           }),
         });
       } catch (networkErr) {
@@ -130,7 +150,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type || "application/octet-stream",
-          category: "other",
+          category,
           notes,
         }),
       });
@@ -214,7 +234,6 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
     if (failedFiles.length === 0) {
       setFiles([]);
       setFileStatuses([]);
-      setCategory("other");
       setNotes("");
       onClose();
     } else {

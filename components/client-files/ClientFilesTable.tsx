@@ -116,6 +116,7 @@ export function ClientFilesTable({ files, onDeleted }: ClientFilesTableProps) {
           <TableRow>
             <TableHead className="w-[280px]">File Name</TableHead>
             <TableHead>Category</TableHead>
+            <TableHead>Type</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Uploaded By</TableHead>
             <TableHead>Date</TableHead>
@@ -136,6 +137,9 @@ export function ClientFilesTable({ files, onDeleted }: ClientFilesTableProps) {
               </TableCell>
               <TableCell>
                 <CategoryBadge category={file.category} />
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {file.file_type?.split('/').pop()?.toUpperCase() ?? file.file_name.split('.').pop()?.toUpperCase() ?? '—'}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {formatBytes(file.file_size)}

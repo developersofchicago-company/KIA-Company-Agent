@@ -1,4 +1,4 @@
-import { Files, FileAudio, HardDrive } from "lucide-react";
+import { Files, FileAudio, HardDrive, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ClientFile } from "@/lib/types";
 
@@ -15,13 +15,16 @@ function formatBytes(bytes: number) {
 export function StorageSummaryCard({ files }: StorageSummaryCardProps) {
   const totalFiles = files.length;
   const waveFiles = files.filter((f) => f.category === "wave_recording").length;
-  const otherFiles = totalFiles - waveFiles;
+  const pdfFiles = files.filter((f) =>
+    f.file_name.toLowerCase().endsWith('.pdf') ||
+    f.file_type === "application/pdf"
+  ).length;
   const totalBytes = files.reduce((sum, f) => sum + (f.file_size ?? 0), 0);
 
   const stats = [
     { label: "Total Files", value: totalFiles, icon: Files, color: "text-dc-blue" },
-    { label: "Wave Recordings", value: waveFiles, icon: FileAudio, color: "text-green-600" },
-    { label: "Other Files", value: otherFiles, icon: Files, color: "text-purple-600" },
+    { label: "Wav Recordings", value: waveFiles, icon: FileAudio, color: "text-green-600" },
+    { label: "PDF Files", value: pdfFiles, icon: FileText, color: "text-red-500" },
     { label: "Storage Used", value: formatBytes(totalBytes), icon: HardDrive, color: "text-orange-500" },
   ];
 

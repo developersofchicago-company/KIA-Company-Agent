@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabase } from "@/lib/supabase-admin";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,7 +11,18 @@ const VALID_CATEGORIES = ["wave_recording", "sales_report", "training", "call_lo
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user
-    const supabase = createServerSupabase();
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookieStore.get(name)?.value,
+          set: () => {},
+          remove: () => {},
+        },
+      },
+    );
     const {
       data: { user },
     } = await supabase.auth.getUser();

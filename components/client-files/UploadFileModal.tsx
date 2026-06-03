@@ -79,23 +79,39 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
 
     try {
       // Step 1: Get presigned URL from server
-      const presignRes = await fetch("/api/client-files/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type || "application/octet-stream",
-          fileSize: file.size,
-          category,
-        }),
-      });
-
-      if (!presignRes.ok) {
-        const err = await presignRes.json();
-        throw new Error(err.error ?? "Failed to get upload URL");
+      let presignRes: Response;
+      try {
+        presignRes = await fetch("/api/client-files/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type || "application/octet-stream",
+            fileSize: file.size,
+            category,
+          }),
+        });
+      } catch (networkErr) {
+        console.error("[presign] network error", networkErr);
+        throw new Error("Could not reach server. Please refresh and try again.");
       }
 
-      const { uploadUrl, key } = await presignRes.json();
+      if (!presignRes.ok) {
+        const text = await presignRes.text().catch(() => "");
+        let message = "Failed to get upload URL";
+        try {
+          const parsed = JSON.parse(text);
+          message = parsed?.error ?? message;
+        } catch {
+          if (text) message = text;
+        }
+        throw new Error(message);
+      }
+
+      const { uploadUrl, key } = (await presignRes.json()) as {
+        uploadUrl: string;
+        key: string;
+      };
 
       // Step 2: Upload directly to Wasabi S3 (bypassing Vercel)
       let uploadRes;

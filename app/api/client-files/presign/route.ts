@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPresignedPutUrl } from "@/lib/wasabi";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,7 +12,18 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB per file
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user
-    const supabase = createServerSupabase();
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookieStore.get(name)?.value,
+          set: () => {},
+          remove: () => {},
+        },
+      },
+    );
     const {
       data: { user },
     } = await supabase.auth.getUser();

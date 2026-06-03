@@ -215,7 +215,6 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
       setFiles([]);
       setFileStatuses([]);
       setCategory("other");
-      setFileType("all");
       setNotes("");
       onClose();
     } else {

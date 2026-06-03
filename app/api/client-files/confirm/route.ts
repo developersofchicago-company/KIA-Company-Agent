@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
         category: safeCategory,
         notes: notes.trim() || null,
         uploaded_by: user.user_metadata?.full_name || user.email || "Unknown",
-        user_id: user.id,
       })
       .select("*")
       .single();

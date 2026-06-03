@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Mail, User } from "lucide-react";
+import { Loader2, Lock, Mail, Sparkles, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const schema = z.object({
+const magicLinkSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z
     .string()
@@ -22,21 +23,41 @@ const schema = z.object({
     .email("Enter a valid email address"),
 });
 
-type SignupValues = z.infer<typeof schema>;
+const passwordSchema = z.object({
+  fullName: z.string().min(2, "Name must be at least 2 characters"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+type MagicLinkValues = z.infer<typeof magicLinkSchema>;
+type PasswordValues = z.infer<typeof passwordSchema>;
 
 export function SignupForm() {
   const router = useRouter();
+  const [usePassword, setUsePassword] = useState(false);
 
   const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SignupValues>({
-    resolver: zodResolver(schema),
+    register: registerMagicLink,
+    handleSubmit: handleSubmitMagicLink,
+    formState: { errors: magicLinkErrors, isSubmitting: isSubmittingMagicLink },
+  } = useForm<MagicLinkValues>({
+    resolver: zodResolver(magicLinkSchema),
     defaultValues: { fullName: "", email: "" },
   });
 
-  async function onSubmit(values: SignupValues) {
+  const {
+    register: registerPassword,
+    handleSubmit: handleSubmitPassword,
+    formState: { errors: passwordErrors, isSubmitting: isSubmittingPassword },
+  } = useForm<PasswordValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { fullName: "", email: "", password: "" },
+  });
+
+  async function onMagicLinkSubmit(values: MagicLinkValues) {
     const supabase = createBrowserSupabase();
 
     const { error } = await supabase.auth.signInWithOtp({
@@ -49,98 +70,266 @@ export function SignupForm() {
     });
 
     if (error) {
-      toast.error(error.message || "Could not send verification code.");
+      toast.error(error.message || "Could not send magic link.");
       return;
     }
 
-    toast.success("Check your email for the verification code!");
-    router.push(`/verify?email=${encodeURIComponent(values.email)}`);
+    toast.success("Check your email for the magic link!");
+    router.push(`/check-email?email=${encodeURIComponent(values.email)}`);
+  }
+
+  async function onPasswordSubmit(values: PasswordValues) {
+    const supabase = createBrowserSupabase();
+
+    const { error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        data: { full_name: values.fullName },
+      },
+    });
+
+    if (error) {
+      toast.error(error.message || "Could not create account.");
+      return;
+    }
+
+    toast.success("Account created!");
+    router.push("/client-files");
+    router.refresh();
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      noValidate
-      className="space-y-5"
-      aria-label="Sign up"
-    >
-      <div className="space-y-2">
-        <Label htmlFor="fullName">Full Name</Label>
-        <div className="relative">
-          <User
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            id="fullName"
-            type="text"
-            autoComplete="name"
-            placeholder="Your full name"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.fullName}
-            aria-describedby={errors.fullName ? "name-error" : undefined}
-            className={cn(
-              "pl-9",
-              errors.fullName && "border-destructive focus-visible:ring-destructive",
-            )}
-            {...register("fullName")}
-          />
-        </div>
-        {errors.fullName && (
-          <p id="name-error" className="text-xs text-destructive">
-            {errors.fullName.message}
-          </p>
-        )}
+    <div className="space-y-5">
+      {/* Toggle */}
+      <div className="flex rounded-lg bg-muted p-1">
+        <button
+          type="button"
+          onClick={() => setUsePassword(false)}
+          className={cn(
+            "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+            !usePassword
+              ? "bg-white text-dc-navy shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Sparkles className="mr-1 inline h-4 w-4" />
+          Magic Link
+        </button>
+        <button
+          type="button"
+          onClick={() => setUsePassword(true)}
+          className={cn(
+            "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+            usePassword
+              ? "bg-white text-dc-navy shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Lock className="mr-1 inline h-4 w-4" />
+          Password
+        </button>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="signup-email">Email</Label>
-        <div className="relative">
-          <Mail
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            id="signup-email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            placeholder="you@company.com"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.email}
-            aria-describedby={errors.email ? "signup-email-error" : undefined}
-            className={cn(
-              "pl-9",
-              errors.email && "border-destructive focus-visible:ring-destructive",
+      {usePassword ? (
+        <form
+          onSubmit={handleSubmitPassword(onPasswordSubmit)}
+          noValidate
+          className="space-y-5"
+          aria-label="Sign up with password"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="password-fullName">Full Name</Label>
+            <div className="relative">
+              <User
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="password-fullName"
+                type="text"
+                autoComplete="name"
+                placeholder="Your full name"
+                disabled={isSubmittingPassword}
+                aria-invalid={!!passwordErrors.fullName}
+                aria-describedby={passwordErrors.fullName ? "password-name-error" : undefined}
+                className={cn(
+                  "pl-9",
+                  passwordErrors.fullName && "border-destructive focus-visible:ring-destructive",
+                )}
+                {...registerPassword("fullName")}
+              />
+            </div>
+            {passwordErrors.fullName && (
+              <p id="password-name-error" className="text-xs text-destructive">
+                {passwordErrors.fullName.message}
+              </p>
             )}
-            {...register("email")}
-          />
-        </div>
-        {errors.email && (
-          <p id="signup-email-error" className="text-xs text-destructive">
-            {errors.email.message}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password-email">Email</Label>
+            <div className="relative">
+              <Mail
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="password-email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@company.com"
+                disabled={isSubmittingPassword}
+                aria-invalid={!!passwordErrors.email}
+                aria-describedby={passwordErrors.email ? "password-email-error" : undefined}
+                className={cn(
+                  "pl-9",
+                  passwordErrors.email && "border-destructive focus-visible:ring-destructive",
+                )}
+                {...registerPassword("email")}
+              />
+            </div>
+            {passwordErrors.email && (
+              <p id="password-email-error" className="text-xs text-destructive">
+                {passwordErrors.email.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="signup-password">Password</Label>
+            <div className="relative">
+              <Lock
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="signup-password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                disabled={isSubmittingPassword}
+                aria-invalid={!!passwordErrors.password}
+                aria-describedby={passwordErrors.password ? "signup-password-error" : undefined}
+                className={cn(
+                  "pl-9",
+                  passwordErrors.password && "border-destructive focus-visible:ring-destructive",
+                )}
+                {...registerPassword("password")}
+              />
+            </div>
+            {passwordErrors.password && (
+              <p id="signup-password-error" className="text-xs text-destructive">
+                {passwordErrors.password.message}
+              </p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isSubmittingPassword}
+            className="h-11 w-full bg-dc-blue text-white hover:bg-dc-blue-dark"
+          >
+            {isSubmittingPassword ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                Creating account...
+              </>
+            ) : (
+              "Create account"
+            )}
+          </Button>
+        </form>
+      ) : (
+        <form
+          onSubmit={handleSubmitMagicLink(onMagicLinkSubmit)}
+          noValidate
+          className="space-y-5"
+          aria-label="Sign up with magic link"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name</Label>
+            <div className="relative">
+              <User
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="fullName"
+                type="text"
+                autoComplete="name"
+                placeholder="Your full name"
+                disabled={isSubmittingMagicLink}
+                aria-invalid={!!magicLinkErrors.fullName}
+                aria-describedby={magicLinkErrors.fullName ? "name-error" : undefined}
+                className={cn(
+                  "pl-9",
+                  magicLinkErrors.fullName && "border-destructive focus-visible:ring-destructive",
+                )}
+                {...registerMagicLink("fullName")}
+              />
+            </div>
+            {magicLinkErrors.fullName && (
+              <p id="name-error" className="text-xs text-destructive">
+                {magicLinkErrors.fullName.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="signup-email">Email</Label>
+            <div className="relative">
+              <Mail
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="signup-email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@company.com"
+                disabled={isSubmittingMagicLink}
+                aria-invalid={!!magicLinkErrors.email}
+                aria-describedby={magicLinkErrors.email ? "signup-email-error" : undefined}
+                className={cn(
+                  "pl-9",
+                  magicLinkErrors.email && "border-destructive focus-visible:ring-destructive",
+                )}
+                {...registerMagicLink("email")}
+              />
+            </div>
+            {magicLinkErrors.email && (
+              <p id="signup-email-error" className="text-xs text-destructive">
+                {magicLinkErrors.email.message}
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            We&apos;ll send a magic link to your email
           </p>
-        )}
-      </div>
 
-      <p className="text-xs text-muted-foreground">
-        We&apos;ll send a 6-digit verification code to your email
-      </p>
-
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className="h-11 w-full bg-dc-blue text-white hover:bg-dc-blue-dark"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            Sending code...
-          </>
-        ) : (
-          "Send verification code"
-        )}
-      </Button>
+          <Button
+            type="submit"
+            disabled={isSubmittingMagicLink}
+            className="h-11 w-full bg-dc-blue text-white hover:bg-dc-blue-dark"
+          >
+            {isSubmittingMagicLink ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                Sending link...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                Send magic link
+              </>
+            )}
+          </Button>
+        </form>
+      )}
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
@@ -151,6 +340,6 @@ export function SignupForm() {
           Sign in
         </Link>
       </p>
-    </form>
+    </div>
   );
 }

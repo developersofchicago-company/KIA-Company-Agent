@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast.success("Password updated — redirecting…");
-      router.push("/dashboard");
+      router.push("/client-files");
       router.refresh();
     } catch (err) {
       toast.error((err as Error).message);

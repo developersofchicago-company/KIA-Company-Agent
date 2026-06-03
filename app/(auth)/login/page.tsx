@@ -85,7 +85,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 Welcome back
               </CardTitle>
               <CardDescription>
-                Enter your email to receive a sign-in code
+                Sign in to access your files and account
               </CardDescription>
             </CardHeader>
             <CardContent>

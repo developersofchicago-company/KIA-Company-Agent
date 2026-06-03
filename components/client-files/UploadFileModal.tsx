@@ -22,6 +22,19 @@ interface UploadFileModalProps {
 
 type CategoryId = "wave_recording" | "sales_report" | "training" | "call_log" | "other";
 
+const BLOCKED_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm"];
+
+function filterBlocked(files: File[]): { allowed: File[]; blocked: File[] } {
+  const allowed: File[] = [];
+  const blocked: File[] = [];
+  for (const f of files) {
+    const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
+    if (BLOCKED_EXTENSIONS.includes(ext)) blocked.push(f);
+    else allowed.push(f);
+  }
+  return { allowed, blocked };
+}
+
 const EXTENSION_CATEGORY: Record<string, CategoryId> = {
   wav: "wave_recording",
   mp3: "wave_recording",
@@ -58,13 +71,15 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragging(false);
-    const dropped = Array.from(e.dataTransfer.files);
-    setFiles((prev) => [...prev, ...dropped]);
+    const { allowed, blocked } = filterBlocked(Array.from(e.dataTransfer.files));
+    if (blocked.length > 0) toast.error(`${blocked.length} file(s) not allowed (mp4 and video formats are blocked).`);
+    if (allowed.length > 0) setFiles((prev) => [...prev, ...allowed]);
   }
 
   function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = Array.from(e.target.files ?? []);
-    setFiles((prev) => [...prev, ...selected]);
+    const { allowed, blocked } = filterBlocked(Array.from(e.target.files ?? []));
+    if (blocked.length > 0) toast.error(`${blocked.length} file(s) not allowed (mp4 and video formats are blocked).`);
+    if (allowed.length > 0) setFiles((prev) => [...prev, ...allowed]);
     e.target.value = "";
   }
 
@@ -271,6 +286,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
               type="file"
               multiple
               className="hidden"
+              accept="audio/*,image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls,.csv"
               onChange={handleFiles}
             />
             <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -278,7 +294,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
               Drop files here or <span className="text-dc-blue">browse</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              All file types accepted
+              Audio, PDF, documents, images — no video files
             </p>
           </div>
 

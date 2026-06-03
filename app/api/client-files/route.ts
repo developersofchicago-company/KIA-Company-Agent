@@ -21,7 +21,11 @@ export async function GET(request: NextRequest) {
       query = query.ilike("file_name", `%${search}%`);
     }
     if (category && category !== "all") {
-      query = query.eq("category", category);
+      if (category === "pdf") {
+        query = query.ilike("file_name", "%.pdf");
+      } else {
+        query = query.eq("category", category);
+      }
     }
 
     const validSortFields = ["created_at", "file_name", "file_size"];

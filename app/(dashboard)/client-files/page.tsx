@@ -19,10 +19,8 @@ import type { ClientFile } from "@/lib/types";
 
 const CATEGORIES = [
   { value: "all",            label: "All Categories" },
-  { value: "wave_recording", label: "Wave Call Recordings" },
-  { value: "sales_report",   label: "Sales Reports" },
-  { value: "training",       label: "Training Documents" },
-  { value: "call_log",       label: "Call Logs" },
+  { value: "wave_recording", label: "Recordings" },
+  { value: "pdf",            label: "PDF" },
   { value: "other",          label: "Other" },
 ];
 

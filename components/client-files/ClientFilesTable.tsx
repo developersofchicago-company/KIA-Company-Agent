@@ -139,7 +139,7 @@ export function ClientFilesTable({ files, onDeleted }: ClientFilesTableProps) {
                 <CategoryBadge category={file.category} />
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
-                {file.file_type?.split('/').pop()?.toUpperCase() ?? file.file_name.split('.').pop()?.toUpperCase() ?? '—'}
+                {file.file_name.split('.').pop()?.toUpperCase() ?? '—'}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {formatBytes(file.file_size)}

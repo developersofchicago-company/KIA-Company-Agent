@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Lock, Mail, Sparkles, User, Check, X } from "lucide-react";
 import { toast } from "sonner";
@@ -42,7 +41,6 @@ type MagicLinkValues = z.infer<typeof magicLinkSchema>;
 type PasswordValues = z.infer<typeof passwordSchema>;
 
 export function SignupForm() {
-  const router = useRouter();
   const [usePassword, setUsePassword] = useState(false);
 
   const {

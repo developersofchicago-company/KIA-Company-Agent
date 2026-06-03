@@ -12,13 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface UploadFileModalProps {
@@ -26,14 +19,6 @@ interface UploadFileModalProps {
   onClose: () => void;
   onUploaded: () => void;
 }
-
-const CATEGORIES = [
-  { value: "wave_recording", label: "Wave Call Recordings" },
-  { value: "sales_report",   label: "Sales Reports" },
-  { value: "training",       label: "Training Documents" },
-  { value: "call_log",       label: "Call Logs" },
-  { value: "other",          label: "Other" },
-];
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -43,7 +28,6 @@ function formatBytes(bytes: number) {
 
 export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalProps) {
   const [files, setFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState("other");
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -88,7 +72,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
             fileName: file.name,
             fileType: file.type || "application/octet-stream",
             fileSize: file.size,
-            category,
+            category: "other",
           }),
         });
       } catch (networkErr) {
@@ -146,7 +130,7 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type || "application/octet-stream",
-          category,
+          category: "other",
           notes,
         }),
       });
@@ -243,7 +227,6 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
   function handleClose() {
     if (uploading) return;
     setFiles([]);
-    setCategory("other");
     setNotes("");
     onClose();
   }
@@ -349,23 +332,6 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
               })}
             </ul>
           )}
-
-          {/* Category */}
-          <div className="space-y-1.5">
-            <Label htmlFor="category">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Notes */}
           <div className="space-y-1.5">

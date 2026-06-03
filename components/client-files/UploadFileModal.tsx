@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -61,7 +61,11 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [fileStatuses, setFileStatuses] = useState<("pending" | "uploading" | "done" | "error")[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const showProgress = files.length > 3;
 
   const selectedType = FILE_TYPES.find((t) => t.value === fileType) ?? FILE_TYPES[0];
 
@@ -82,51 +86,165 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
+  // Upload a single file using presigned URL
+  async function uploadSingleFile(file: File, index: number) {
+    setFileStatuses((prev) => {
+      const next = [...prev];
+      next[index] = "uploading";
+      return next;
+    });
+
+    try {
+      // Step 1: Get presigned URL from server
+      const presignRes = await fetch("/api/client-files/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          fileSize: file.size,
+          category,
+        }),
+      });
+
+      if (!presignRes.ok) {
+        const err = await presignRes.json();
+        throw new Error(err.error ?? "Failed to get upload URL");
+      }
+
+      const { uploadUrl, key } = await presignRes.json();
+
+      // Step 2: Upload directly to Wasabi S3 (bypassing Vercel)
+      let uploadRes;
+      try {
+        uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+        });
+      } catch (networkErr) {
+        console.error("Network/CORS error:", networkErr);
+        throw new Error(
+          "Failed to connect to storage. This is likely a CORS configuration issue. " +
+          "Please check that your Wasabi bucket allows PUT requests from " + window.location.origin
+        );
+      }
+
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text().catch(() => "Unknown error");
+        console.error("Wasabi upload error:", uploadRes.status, errorText);
+        throw new Error(`Upload failed: ${uploadRes.status} ${uploadRes.statusText}`);
+      }
+
+      // Step 3: Confirm upload and save to database
+      const confirmRes = await fetch("/api/client-files/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type || "application/octet-stream",
+          category,
+          notes,
+        }),
+      });
+
+      if (!confirmRes.ok) {
+        const err = await confirmRes.json();
+        throw new Error(err.error ?? "Failed to save file record");
+      }
+
+      setFileStatuses((prev) => {
+        const next = [...prev];
+        next[index] = "done";
+        return next;
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error(`Upload failed for ${file.name}:`, err);
+      setFileStatuses((prev) => {
+        const next = [...prev];
+        next[index] = "error";
+        return next;
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  }
+
+  // Process files in parallel with concurrency limit
   async function handleUpload() {
     if (files.length === 0) {
       toast.error("Please select at least one file.");
       return;
     }
+
+    // Check file sizes (100MB limit per file)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    const oversizedFiles = files.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      toast.error(`${oversizedFiles.length} file(s) exceed 100MB limit`);
+      return;
+    }
+
     setUploading(true);
+    setCurrentIndex(0);
+    setFileStatuses(files.map(() => "pending"));
+
+    const CONCURRENCY = 5; // Upload 5 files at a time
+    let completedCount = 0;
     let successCount = 0;
     let failCount = 0;
 
-    for (const file of files) {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("category", category);
-        formData.append("notes", notes);
+    // Create batches of indices
+    const indices = files.map((_, i) => i);
+    const batches: number[][] = [];
+    for (let i = 0; i < indices.length; i += CONCURRENCY) {
+      batches.push(indices.slice(i, i + CONCURRENCY));
+    }
 
-        const res = await fetch("/api/client-files/upload", {
-          method: "POST",
-          body: formData,
-        });
+    // Process batches sequentially, files within batch in parallel
+    for (const batch of batches) {
+      const results = await Promise.all(
+        batch.map(async (index) => {
+          setCurrentIndex(index);
+          return uploadSingleFile(files[index], index);
+        })
+      );
 
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error ?? "Upload failed");
-        }
-        successCount++;
-      } catch (err) {
-        failCount++;
-        console.error(err);
-      }
+      completedCount += batch.length;
+      results.forEach((r) => {
+        if (r.success) successCount++;
+        else failCount++;
+      });
     }
 
     setUploading(false);
 
     if (successCount > 0) {
       toast.success(`${successCount} file${successCount > 1 ? "s" : ""} uploaded successfully.`);
-      setFiles([]);
-      setCategory("other");
-      setFileType("all");
-      setNotes("");
       onUploaded();
-      onClose();
     }
     if (failCount > 0) {
       toast.error(`${failCount} file${failCount > 1 ? "s" : ""} failed to upload.`);
+    }
+
+    // Clear completed files, keep failed ones for retry
+    const failedFiles = files.filter((_, i) => fileStatuses[i] === "error" || (fileStatuses[i] !== "done" && uploading === false));
+    if (failedFiles.length === 0) {
+      setFiles([]);
+      setFileStatuses([]);
+      setCategory("other");
+      setFileType("all");
+      setNotes("");
+      onClose();
+    } else {
+      setFiles(failedFiles);
+      setFileStatuses(failedFiles.map(() => "pending"));
+      toast.info(`${failedFiles.length} file(s) remaining. You can retry them.`);
     }
   }
 
@@ -194,29 +312,68 @@ export function UploadFileModal({ open, onClose, onUploaded }: UploadFileModalPr
             </p>
           </div>
 
+          {/* Progress bar for batch uploads */}
+          {showProgress && uploading && (
+            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-dc-navy">
+                  Uploading {fileStatuses.filter(s => s === "done").length} of {files.length} files
+                </span>
+                <span className="text-muted-foreground">
+                  {Math.round((fileStatuses.filter(s => s === "done" || s === "error").length / files.length) * 100)}%
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-dc-blue transition-all duration-300"
+                  style={{
+                    width: `${Math.round((fileStatuses.filter(s => s === "done" || s === "error").length / files.length) * 100)}%`
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {fileStatuses.filter(s => s === "uploading").length > 0
+                  ? `${fileStatuses.filter(s => s === "uploading").length} file(s) uploading now`
+                  : "Processing..."}
+              </p>
+            </div>
+          )}
+
           {/* Selected files list */}
           {files.length > 0 && (
             <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
-              {files.map((f, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm"
-                >
-                  <span className="min-w-0 flex-1 truncate text-dc-navy" title={f.name}>
-                    {f.name}
-                  </span>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {formatBytes(f.size)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                    className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-destructive"
+              {files.map((f, i) => {
+                const status = fileStatuses[i];
+                return (
+                  <li
+                    key={i}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm",
+                      status === "done" ? "bg-green-50" : status === "error" ? "bg-destructive/10" : "bg-muted/40"
+                    )}
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              ))}
+                    <span className="min-w-0 flex-1 truncate text-dc-navy" title={f.name}>
+                      {f.name}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {formatBytes(f.size)}
+                    </span>
+                    {status === "uploading" && <Loader2 className="h-3.5 w-3.5 animate-spin text-dc-blue" />}
+                    {status === "done" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                    {status === "error" && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
+                    {!status && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                        disabled={uploading}
+                        className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 

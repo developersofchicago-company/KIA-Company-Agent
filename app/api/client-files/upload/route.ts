@@ -4,6 +4,10 @@ import { uploadToWasabi } from "@/lib/wasabi";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
+
+// Allow larger body size for file uploads
+export const fetchCache = "force-no-store";
 
 const VALID_CATEGORIES = ["wave_recording", "sales_report", "training", "call_log", "other"];
 

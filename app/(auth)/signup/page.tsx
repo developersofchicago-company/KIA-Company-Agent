@@ -77,7 +77,7 @@ export default async function SignupPage() {
                 Create your account
               </CardTitle>
               <CardDescription>
-                Enter your email to receive a magic link
+                Create an account to access your files
               </CardDescription>
             </CardHeader>
             <CardContent>
